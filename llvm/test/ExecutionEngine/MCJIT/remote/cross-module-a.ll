@@ -1,3 +1,4 @@
+;UNSUPPORTED: loongarch64
 ; RUN: %lli -jit-kind=mcjit -extra-module=%p/Inputs/cross-module-b.ll -disable-lazy-compilation=true -remote-mcjit -mcjit-remote-process=lli-child-target%exeext %s > /dev/null
 ; XFAIL: windows-gnu,windows-msvc
 ; UNSUPPORTED: powerpc64-unknown-linux-gnu

@@ -1,4 +1,4 @@
-//===-- LoongArchMCAsmInfo.h - LoongArch Asm Info --------------*- C++ -*--===//
+//===-- LoongArchMCAsmInfo.h - LoongArch Asm Info ------------------------*- C++ -*--===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -22,9 +22,10 @@ class LoongArchMCAsmInfo : public MCAsmInfoELF {
   void anchor() override;
 
 public:
-  explicit LoongArchMCAsmInfo(const Triple &TargetTriple);
+  explicit LoongArchMCAsmInfo(const Triple &TheTriple,
+                              const MCTargetOptions &Options);
 };
 
-} // end namespace llvm
+} // namespace llvm
 
-#endif // LLVM_LIB_TARGET_LOONGARCH_MCTARGETDESC_LOONGARCHMCASMINFO_H
+#endif

@@ -104,6 +104,11 @@ extern "C" int throw_exception() {
   if (Triple.isPPC())
     return;
 
+  // FIXME: LoongArch64 fails due to `Symbols not found:
+  // [DW.ref.__gxx_personality_v0]`
+  if (Triple.isLoongArch64())
+    return;
+
   // FIXME: ARM fails due to `Not implemented relocation type!`
   if (Triple.isARM())
     return;

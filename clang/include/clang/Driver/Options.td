@@ -184,6 +184,8 @@ def m_x86_Features_Group : OptionGroup<"<x86 features group>">,
                            Group<m_Group>, Flags<[CoreOption]>, DocName<"X86">;
 def m_riscv_Features_Group : OptionGroup<"<riscv features group>">,
                              Group<m_Group>, DocName<"RISCV">;
+def m_loongarch_Features_Group : OptionGroup<"<loongarch features group>">,
+                                 Group<m_Group>, DocName<"LoongArch">;
 
 def m_libc_Group : OptionGroup<"<m libc group>">, Group<m_mips_Features_Group>,
                    Flags<[HelpHidden]>;
@@ -3491,12 +3493,15 @@ def mcmodel_EQ_medany : Flag<["-"], "mcmodel=medany">, Group<m_riscv_Features_Gr
 def menable_experimental_extensions : Flag<["-"], "menable-experimental-extensions">, Group<m_Group>,
   HelpText<"Enable use of experimental RISC-V extensions.">;
 
-def munaligned_access : Flag<["-"], "munaligned-access">, Group<m_arm_Features_Group>,
-  HelpText<"Allow memory accesses to be unaligned (AArch32/AArch64 only)">;
-def mno_unaligned_access : Flag<["-"], "mno-unaligned-access">, Group<m_arm_Features_Group>,
-  HelpText<"Force all memory accesses to be aligned (AArch32/AArch64 only)">;
+def munaligned_access : Flag<["-"], "munaligned-access">, Group<m_Group>,
+  HelpText<"Allow memory accesses to be unaligned">;
+def mno_unaligned_access : Flag<["-"], "mno-unaligned-access">, Group<m_Group>,
+  HelpText<"Force all memory accesses to be aligned">;
 def mstrict_align : Flag<["-"], "mstrict-align">, Alias<mno_unaligned_access>, Flags<[CC1Option,HelpHidden]>,
   HelpText<"Force all memory accesses to be aligned (same as mno-unaligned-access)">;
+def mno_strict_align : Flag<["-"], "mno-strict-align">, Group<m_loongarch_Features_Group>,
+  Flags<[CC1Option,HelpHidden]>, Alias<munaligned_access>,
+  HelpText<"Allow memory accesses to be unaligned (LoongArch only, same as munaligned-access)">;
 def mno_thumb : Flag<["-"], "mno-thumb">, Group<m_arm_Features_Group>;
 def mrestrict_it: Flag<["-"], "mrestrict-it">, Group<m_arm_Features_Group>,
   HelpText<"Disallow generation of complex IT blocks.">;
@@ -3824,6 +3829,14 @@ def mstack_protector_guard_reg_EQ : Joined<["-"], "mstack-protector-guard-reg=">
 def mfentry : Flag<["-"], "mfentry">, HelpText<"Insert calls to fentry at function entry (x86/SystemZ only)">,
   Flags<[CC1Option]>, Group<m_Group>,
   MarshallingInfoFlag<CodeGenOpts<"CallFEntry">>;
+def mlsx : Flag<["-"], "mlsx">, Group<m_loongarch_Features_Group>,
+  HelpText<"Use LARCH Loongson LSX instructions.">;
+def mno_lsx : Flag<["-"], "mno-lsx">, Group<m_loongarch_Features_Group>,
+  HelpText<"Disable LARCH Loongson LSX instructions.">;
+def mlasx : Flag<["-"], "mlasx">, Group<m_loongarch_Features_Group>,
+  HelpText<"Enable LARCH Loongson LASX instructions.">;
+def mno_lasx : Flag<["-"], "mno-lasx">, Group<m_loongarch_Features_Group>,
+  HelpText<"Disable LARCH Loongson LASX instructions.">;
 def mnop_mcount : Flag<["-"], "mnop-mcount">, HelpText<"Generate mcount/__fentry__ calls as nops. To activate they need to be patched in.">,
   Flags<[CC1Option]>, Group<m_Group>,
   MarshallingInfoFlag<CodeGenOpts<"MNopMCount">>;

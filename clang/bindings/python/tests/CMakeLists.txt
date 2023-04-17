@@ -40,7 +40,7 @@ endif()
 # addressed.
 # SystemZ has broken Python/FFI interface:
 # https://reviews.llvm.org/D52840#1265716
-if(${LLVM_NATIVE_ARCH} MATCHES "^(AArch64|Hexagon|Sparc|SystemZ)$")
+if(${LLVM_NATIVE_ARCH} MATCHES "^(AArch64|Hexagon|LoongArch|Sparc|SystemZ)$")
   set(RUN_PYTHON_TESTS FALSE)
 endif()
 

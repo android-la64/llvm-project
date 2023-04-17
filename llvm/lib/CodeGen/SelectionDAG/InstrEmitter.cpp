@@ -701,6 +701,9 @@ InstrEmitter::EmitDbgValue(SDDbgValue *SD,
     MIB.addMetadata(Var);
     MIB.addMetadata(Expr);
     AddDbgValueLocationOps(MIB, DbgValDesc, LocationOps, VRBaseMap);
+    // FIXME: Fix rustc build error with lto=thin option on loongarch.
+    if (MF->getTarget().getTargetTriple().isLoongArch())
+      return nullptr;
     return &*MIB;
   }
 

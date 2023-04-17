@@ -1,3 +1,4 @@
+;UNSUPPORTED: loongarch64
 ; RUN: %lli -jit-kind=mcjit -remote-mcjit -O0 -mcjit-remote-process=lli-child-target%exeext %s
 ; XFAIL: windows-gnu,windows-msvc
 ; UNSUPPORTED: powerpc64-unknown-linux-gnu

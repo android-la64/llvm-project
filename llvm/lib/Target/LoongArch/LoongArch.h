@@ -1,4 +1,4 @@
-//===-- LoongArch.h - Top-level interface for LoongArch ---------*- C++ -*-===//
+//===-- LoongArch.h - Top-level interface for LoongArch representation ----*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,33 +6,32 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the entry points for global functions defined in the LLVM
-// LoongArch back-end.
+// This file contains the entry points for global functions defined in
+// the LLVM LoongArch back-end.
 //
 //===----------------------------------------------------------------------===//
 
 #ifndef LLVM_LIB_TARGET_LOONGARCH_LOONGARCH_H
 #define LLVM_LIB_TARGET_LOONGARCH_LOONGARCH_H
 
-#include "MCTargetDesc/LoongArchBaseInfo.h"
+#include "MCTargetDesc/LoongArchMCTargetDesc.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
-class LoongArchTargetMachine;
-class AsmPrinter;
-class FunctionPass;
-class MCInst;
-class MCOperand;
-class MachineInstr;
-class MachineOperand;
+  class LoongArchTargetMachine;
+  class ModulePass;
+  class FunctionPass;
+  class LoongArchSubtarget;
+  class LoongArchTargetMachine;
+  class InstructionSelector;
+  class PassRegistry;
 
-bool lowerLoongArchMachineInstrToMCInst(const MachineInstr *MI, MCInst &OutMI,
-                                        AsmPrinter &AP);
-bool lowerLoongArchMachineOperandToMCOperand(const MachineOperand &MO,
-                                             MCOperand &MCOp,
-                                             const AsmPrinter &AP);
+  FunctionPass *createLoongArchModuleISelDagPass();
+  FunctionPass *createLoongArchOptimizePICCallPass();
+  FunctionPass *createLoongArchBranchExpansion();
+  FunctionPass *createLoongArchExpandPseudoPass();
 
-FunctionPass *createLoongArchISelDag(LoongArchTargetMachine &TM);
-} // end namespace llvm
+  void initializeLoongArchBranchExpansionPass(PassRegistry &);
+} // end namespace llvm;
 
-#endif // LLVM_LIB_TARGET_LOONGARCH_LOONGARCH_H
+#endif

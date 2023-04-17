@@ -1,4 +1,4 @@
-//===-- LoongArchTargetInfo.h - LoongArch Target Implementation -*- C++ -*-===//
+//===-- LoongArchTargetInfo.h - LoongArch Target Implementation -----------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -16,6 +16,6 @@ class Target;
 Target &getTheLoongArch32Target();
 Target &getTheLoongArch64Target();
 
-} // end namespace llvm
+} // namespace llvm
 
 #endif // LLVM_LIB_TARGET_LOONGARCH_TARGETINFO_LOONGARCHTARGETINFO_H

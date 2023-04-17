@@ -17,6 +17,7 @@ class InputSectionBase;
 struct EhSectionPiece;
 
 uint8_t getFdeEncoding(EhSectionPiece *p);
+void setPcRelativeEncoding(EhSectionPiece *p, uint8_t *buf);
 bool hasLSDA(const EhSectionPiece &p);
 } // namespace elf
 } // namespace lld

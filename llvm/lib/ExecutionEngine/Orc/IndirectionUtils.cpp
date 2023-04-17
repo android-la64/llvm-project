@@ -157,6 +157,11 @@ createLocalCompileCallbackManager(const Triple &T, ExecutionSession &ES,
       return CCMgrT::Create(ES, ErrorHandlerAddress);
     }
 
+    case Triple::loongarch64: {
+      typedef orc::LocalJITCompileCallbackManager<orc::OrcLoongArch64> CCMgrT;
+      return CCMgrT::Create(ES, ErrorHandlerAddress);
+    }
+
     case Triple::x86_64: {
       if (T.getOS() == Triple::OSType::Win32) {
         typedef orc::LocalJITCompileCallbackManager<orc::OrcX86_64_Win32> CCMgrT;

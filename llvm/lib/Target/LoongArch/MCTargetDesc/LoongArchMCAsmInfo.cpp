@@ -1,4 +1,4 @@
-//===-- LoongArchMCAsmInfo.cpp - LoongArch Asm properties ------*- C++ -*--===//
+//===-- LoongArchMCAsmInfo.cpp - LoongArch Asm Properties ---------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -12,23 +12,28 @@
 
 #include "LoongArchMCAsmInfo.h"
 #include "llvm/ADT/Triple.h"
-#include "llvm/BinaryFormat/Dwarf.h"
-#include "llvm/MC/MCStreamer.h"
 
 using namespace llvm;
 
-void LoongArchMCAsmInfo::anchor() {}
+void LoongArchMCAsmInfo::anchor() { }
 
-LoongArchMCAsmInfo::LoongArchMCAsmInfo(const Triple &TT) {
-  CodePointerSize = CalleeSaveStackSlotSize = TT.isArch64Bit() ? 8 : 4;
-  AlignmentIsInBytes = false;
-  Data8bitsDirective = "\t.byte\t";
-  Data16bitsDirective = "\t.half\t";
-  Data32bitsDirective = "\t.word\t";
-  Data64bitsDirective = "\t.dword\t";
-  ZeroDirective = "\t.space\t";
-  CommentString = "#";
+LoongArchMCAsmInfo::LoongArchMCAsmInfo(const Triple &TheTriple,
+                                       const MCTargetOptions &Options) {
+
+  if (TheTriple.isLoongArch64()
+      && TheTriple.getEnvironment() != Triple::GNUABILPX32)
+    CodePointerSize = CalleeSaveStackSlotSize = 8;
+
+  AlignmentIsInBytes          = false;
+  Data16bitsDirective         = "\t.half\t";
+  Data32bitsDirective         = "\t.word\t";
+  Data64bitsDirective         = "\t.dword\t";
+  CommentString               = "#";
+  ZeroDirective               = "\t.space\t";
   SupportsDebugInformation = true;
-  DwarfRegNumForCFI = true;
   ExceptionsType = ExceptionHandling::DwarfCFI;
+  DwarfRegNumForCFI = true;
+  //HasLoongArchExpressions = true;
+  UseIntegratedAssembler = true;
+  UsesELFSectionDirectiveForBSS = true;
 }

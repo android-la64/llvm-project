@@ -624,6 +624,10 @@ void EhFrameSection::writeTo(uint8_t *buf) {
   for (CieRecord *rec : cieRecords) {
     size_t cieOffset = rec->cie->outputOff;
     writeCieFde(buf + cieOffset, rec->cie->data());
+    // Make FDE, CIE LSDA and Personality pc relative.
+    if ((config->shared || config->pie) && config->emachine == EM_LOONGARCH) {
+      setPcRelativeEncoding(rec->cie, buf + cieOffset);
+    }
 
     for (EhSectionPiece *fde : rec->fdes) {
       size_t off = fde->outputOff;
@@ -632,6 +636,17 @@ void EhFrameSection::writeTo(uint8_t *buf) {
       // FDE's second word should have the offset to an associated CIE.
       // Write it.
       write32(buf + off + 4, off + 4 - cieOffset);
+    }
+  }
+
+  if ((config->shared || config->pie) && config->emachine == EM_LOONGARCH) {
+    for (EhInputSection *s : sections) {
+      // Make each relocation pc relative in .eh_frame sections.
+      for (Relocation *rel = s->relocations.begin();
+           rel != s->relocations.end(); rel++) {
+        if (rel->type == R_LARCH_64 || rel->type == R_LARCH_32)
+          rel->expr = R_PC;
+      }
     }
   }
 

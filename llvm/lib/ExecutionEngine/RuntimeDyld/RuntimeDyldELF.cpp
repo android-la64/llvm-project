@@ -641,6 +641,191 @@ void RuntimeDyldELF::resolveARMRelocation(const SectionEntry &Section,
   }
 }
 
+void RuntimeDyldELF::resolveLoongArch64Relocation(const SectionEntry &Section,
+                                                  uint64_t Offset,
+                                                  uint64_t Value, uint32_t Type,
+                                                  int64_t Addend) {
+  uint32_t *TargetPtr =
+      reinterpret_cast<uint32_t *>(Section.getAddressWithOffset(Offset));
+  uint64_t FinalAddress = Section.getLoadAddressWithOffset(Offset);
+  uint64_t tmp1, tmp2, tmp3;
+
+  LLVM_DEBUG(dbgs() << "[XXX] resolveLoongArch64Relocation, LocalAddress: 0x"
+                    << format("%llx", Section.getAddressWithOffset(Offset))
+                    << " FinalAddress: 0x" << format("%llx", FinalAddress)
+                    << " Value: 0x" << format("%llx", Value) << " Type: 0x"
+                    << format("%x", Type) << " Addend: 0x"
+                    << format("%llx", Addend) << "\n");
+
+  switch (Type) {
+  case ELF::R_LARCH_SOP_PUSH_GPREL:
+  case ELF::R_LARCH_SOP_PUSH_TLS_TPREL:
+  case ELF::R_LARCH_SOP_PUSH_TLS_GOT:
+  case ELF::R_LARCH_SOP_PUSH_TLS_GD:
+  default:
+    llvm_unreachable("Relocation type not implemented yet!");
+    break;
+  case ELF::R_LARCH_MARK_LA:
+    // mark la
+    MarkLA = true;
+    break;
+  case ELF::R_LARCH_SOP_PUSH_ABSOLUTE:
+    if (MarkLA && !Addend)
+      // push(value)
+      ValuesStack.push_back(Value);
+    else
+      // push(addend)
+      ValuesStack.push_back(Addend);
+    break;
+  case ELF::R_LARCH_SOP_PUSH_PLT_PCREL:
+  case ELF::R_LARCH_SOP_PUSH_PCREL:
+    MarkLA = false;
+    // push(value -pc + addend)
+    ValuesStack.push_back(Value - FinalAddress + Addend);
+    break;
+  case ELF::R_LARCH_SOP_NOT:
+    // pop(tmp1)
+    // push(!tmp1)
+    tmp1 = ValuesStack.pop_back_val();
+    ValuesStack.push_back(!tmp1);
+    break;
+  case ELF::R_LARCH_SOP_AND:
+    // pop(tmp2)
+    // pop(tmp1)
+    // push(tmp1 & tmp2)
+    tmp2 = ValuesStack.pop_back_val();
+    tmp1 = ValuesStack.pop_back_val();
+    ValuesStack.push_back(tmp1 & tmp2);
+    break;
+  case ELF::R_LARCH_SOP_IF_ELSE:
+    // pop(tmp3)
+    // pop(tmp2)
+    // pop(tmp1)
+    // push(tmp1 ? tmp2 : tmp3)
+    tmp3 = ValuesStack.pop_back_val();
+    tmp2 = ValuesStack.pop_back_val();
+    tmp1 = ValuesStack.pop_back_val();
+    ValuesStack.push_back(tmp1 ? tmp2 : tmp3);
+    break;
+  case ELF::R_LARCH_SOP_ADD:
+    // pop(tmp2)
+    // pop(tmp1)
+    // push(tmp1 + tmp2)
+    tmp2 = ValuesStack.pop_back_val();
+    tmp1 = ValuesStack.pop_back_val();
+    ValuesStack.push_back(tmp1 + tmp2);
+    break;
+  case ELF::R_LARCH_SOP_SUB:
+    // pop(tmp2)
+    // pop(tmp1)
+    // push(tmp1 - tmp2)
+    tmp2 = ValuesStack.pop_back_val();
+    tmp1 = ValuesStack.pop_back_val();
+    ValuesStack.push_back(tmp1 - tmp2);
+    break;
+  case ELF::R_LARCH_SOP_SR:
+    // pop(tmp2)
+    // pop(tmp1)
+    // push(tmp1 >> tmp2)
+    tmp2 = ValuesStack.pop_back_val();
+    tmp1 = ValuesStack.pop_back_val();
+    ValuesStack.push_back(tmp1 >> tmp2);
+    break;
+  case ELF::R_LARCH_SOP_SL:
+    // pop(tmp2)
+    // pop(tmp1)
+    // push(tmp1 << tmp2)
+    tmp2 = ValuesStack.pop_back_val();
+    tmp1 = ValuesStack.pop_back_val();
+    ValuesStack.push_back(tmp1 << tmp2);
+    break;
+  case ELF::R_LARCH_32:
+    support::ulittle32_t::ref{TargetPtr} =
+        static_cast<uint32_t>(Value + Addend);
+    break;
+  case ELF::R_LARCH_64:
+    support::ulittle64_t::ref{TargetPtr} = Value + Addend;
+    break;
+  case ELF::R_LARCH_SOP_POP_32_U_10_12:
+  case ELF::R_LARCH_SOP_POP_32_S_10_12:
+    // pop(tmp1)
+    // get(inst)
+    // inst=(inst & 0xffc003ff)|((tmp1 & 0xfff) << 10)
+    // write(inst)
+    tmp1 = ValuesStack.pop_back_val();
+    support::ulittle32_t::ref{TargetPtr} =
+        (support::ulittle32_t::ref{TargetPtr} & 0xffc003ff) |
+        static_cast<uint32_t>((tmp1 & 0xfff) << 10);
+    break;
+  case ELF::R_LARCH_SOP_POP_32_S_5_20:
+    // pop(tmp1)
+    // get(inst)
+    // inst=(inst & 0xfe00001f)|((tmp1 & 0xfffff) << 5)
+    // write(inst)
+    tmp1 = ValuesStack.pop_back_val();
+    support::ulittle32_t::ref{TargetPtr} =
+        (support::ulittle32_t::ref{TargetPtr} & 0xfe00001f) |
+        static_cast<uint32_t>((tmp1 & 0xfffff) << 5);
+    break;
+  case ELF::R_LARCH_SOP_POP_32_S_10_16_S2:
+    // pop(tmp1)
+    // tmp1 >>=2
+    // get(inst)
+    // inst=(inst & 0xfc0003ff)|((tmp1 & 0xffff) << 10)
+    // write(inst)
+    tmp1 = ValuesStack.pop_back_val();
+    tmp1 >>= 2;
+    support::ulittle32_t::ref{TargetPtr} =
+        (support::ulittle32_t::ref{TargetPtr} & 0xfc0003ff) |
+        static_cast<uint32_t>((tmp1 & 0xffff) << 10);
+    break;
+  case ELF::R_LARCH_SOP_POP_32_S_0_5_10_16_S2:
+    // pop(tmp1)
+    // tmp1 >>= 2
+    // get(inst)
+    // inst=(inst & 0xfc0003e0)|((tmp1 & 0xffff) << 10)|((tmp1 & 0x1f0000) >>
+    // 16) write(inst)
+    tmp1 = ValuesStack.pop_back_val();
+    tmp1 >>= 2;
+    support::ulittle32_t::ref{TargetPtr} =
+        (support::ulittle32_t::ref{TargetPtr} & 0xfc0003e0) |
+        static_cast<uint32_t>((tmp1 & 0xffff) << 10) |
+        static_cast<uint32_t>((tmp1 & 0x1f0000) >> 16);
+    break;
+  case ELF::R_LARCH_SOP_POP_32_S_0_10_10_16_S2:
+    // pop(tmp1)
+    // tmp1 >>= 2
+    // get(inst)
+    // inst=(inst & 0xfc000000)|((tmp1 & 0xffff) << 10)|((tmp1 & 0x3ff0000) >>
+    // 16) write(inst)
+    tmp1 = ValuesStack.pop_back_val();
+    tmp1 >>= 2;
+    support::ulittle32_t::ref{TargetPtr} =
+        (support::ulittle32_t::ref{TargetPtr} & 0xfc000000) |
+        static_cast<uint32_t>((tmp1 & 0xffff) << 10) |
+        static_cast<uint32_t>((tmp1 & 0x3ff0000) >> 16);
+    break;
+  case ELF::R_LARCH_ADD32:
+    support::ulittle32_t::ref{TargetPtr} =
+        (support::ulittle32_t::ref{TargetPtr} +
+         static_cast<uint32_t>(Value + Addend));
+    break;
+  case ELF::R_LARCH_SUB32:
+    support::ulittle32_t::ref{TargetPtr} =
+        (support::ulittle32_t::ref{TargetPtr} -
+         static_cast<uint32_t>(Value + Addend));
+    break;
+  case ELF::R_LARCH_ADD64:
+    support::ulittle64_t::ref{TargetPtr} =
+        (support::ulittle64_t::ref{TargetPtr} + Value + Addend);
+    break;
+  case ELF::R_LARCH_SUB64:
+    support::ulittle64_t::ref{TargetPtr} =
+        (support::ulittle64_t::ref{TargetPtr} - Value - Addend);
+    break;
+  }
+}
+
 void RuntimeDyldELF::setMipsABI(const ObjectFile &Obj) {
   if (Arch == Triple::UnknownArch ||
       !StringRef(Triple::getArchTypePrefix(Arch)).equals("mips")) {
@@ -1057,6 +1242,9 @@ void RuntimeDyldELF::resolveRelocation(const SectionEntry &Section,
     resolveARMRelocation(Section, Offset, (uint32_t)(Value & 0xffffffffL), Type,
                          (uint32_t)(Addend & 0xffffffffL));
     break;
+  case Triple::loongarch64:
+    resolveLoongArch64Relocation(Section, Offset, Value, Type, Addend);
+    break;
   case Triple::ppc: // Fall through.
   case Triple::ppcle:
     resolvePPC32Relocation(Section, Offset, Value, Type, Addend);
@@ -1368,6 +1556,58 @@ RuntimeDyldELF::processRelocationRef(
         Value.Addend += (int16_t)((*Placeholder & 0xFFF) | (((*Placeholder >> 16) & 0xF) << 12));
       }
       processSimpleRelocation(SectionID, Offset, RelType, Value);
+    }
+  } else if (Arch == Triple::loongarch64) {
+    if (RelType == ELF::R_LARCH_32 || RelType == ELF::R_LARCH_64 ||
+        (RelType >= ELF::R_LARCH_ADD8 && RelType <= ELF::R_LARCH_SUB64)) {
+      if (TargetName.size() == 0 &&
+          Sections[SectionID].getAddress() != nullptr) {
+        uint64_t SymOffset = 0;
+        unsigned SID = 0;
+        auto SectionOrErr = Symbol->getSection();
+        if (!SectionOrErr) {
+          std::string Buf;
+          raw_string_ostream OS(Buf);
+          logAllUnhandledErrors(SectionOrErr.takeError(), OS);
+          report_fatal_error(Twine(OS.str()));
+        }
+        section_iterator si = *SectionOrErr;
+        if (si == Obj.section_end())
+          llvm_unreachable("Symbol section not found!");
+        bool isCode = si->isText();
+        if (auto SectionIDOrErr =
+                findOrEmitSection(Obj, (*si), isCode, ObjSectionToID)) {
+          SID = *SectionIDOrErr;
+        } else
+          return SectionIDOrErr.takeError();
+        auto OffsetOrErr = Symbol->getAddress();
+        if (OffsetOrErr)
+          SymOffset = *OffsetOrErr;
+        uint64_t Target = Sections[SID].getLoadAddress() + SymOffset;
+        resolveRelocation(Sections[SectionID], Offset, Target, RelType, Addend);
+      } else {
+        processSimpleRelocation(SectionID, Offset, RelType, Value);
+      }
+    } else {
+      RTDyldSymbolTable::const_iterator Loc =
+          GlobalSymbolTable.find(TargetName);
+      if (!TargetName.empty()) {
+        if (Loc == GlobalSymbolTable.end()) {
+          IsSaved = true;
+          SavedSymbol = TargetName;
+        } else {
+          IsSaved = false;
+        }
+      }
+      if (IsSaved == true) {
+        Value.SymbolName = SavedSymbol.data();
+        processSimpleRelocation(SectionID, Offset, RelType, Value);
+      } else {
+        uint8_t *TargetAddr = getSymbolLocalAddress(TargetName);
+        resolveRelocation(Sections[SectionID], Offset,
+                          reinterpret_cast<uint64_t>(TargetAddr), RelType,
+                          Addend);
+      }
     }
   } else if (IsMipsO32ABI) {
     uint8_t *Placeholder = reinterpret_cast<uint8_t *>(
@@ -2218,6 +2458,7 @@ size_t RuntimeDyldELF::getGOTEntrySize() {
   case Triple::x86_64:
   case Triple::aarch64:
   case Triple::aarch64_be:
+  case Triple::loongarch64:
   case Triple::ppc64:
   case Triple::ppc64le:
   case Triple::systemz:

@@ -1,4 +1,4 @@
-//===-- LoongArchTargetMachine.cpp - Define TargetMachine for LoongArch ---===//
+//===-- LoongArchTargetMachine.cpp - Define TargetMachine for LoongArch -------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -12,12 +12,29 @@
 
 #include "LoongArchTargetMachine.h"
 #include "LoongArch.h"
-#include "MCTargetDesc/LoongArchBaseInfo.h"
-#include "TargetInfo/LoongArchTargetInfo.h"
+#include "LoongArchISelDAGToDAG.h"
+#include "LoongArchSubtarget.h"
+#include "LoongArchTargetObjectFile.h"
+#include "LoongArchTargetTransformInfo.h"
+#include "MCTargetDesc/LoongArchABIInfo.h"
+#include "MCTargetDesc/LoongArchMCTargetDesc.h"
+#include "llvm/ADT/Optional.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/CodeGen/BasicTTIImpl.h"
+#include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/Passes.h"
-#include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/IR/Attributes.h"
+#include "llvm/IR/Function.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/CodeGen.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetOptions.h"
+#include <cassert>
+#include <string>
 
 using namespace llvm;
 
@@ -26,29 +43,63 @@ using namespace llvm;
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeLoongArchTarget() {
   // Register the target.
   RegisterTargetMachine<LoongArchTargetMachine> X(getTheLoongArch32Target());
-  RegisterTargetMachine<LoongArchTargetMachine> Y(getTheLoongArch64Target());
+  RegisterTargetMachine<LoongArchTargetMachine> A(getTheLoongArch64Target());
 }
 
-static std::string computeDataLayout(const Triple &TT) {
-  if (TT.isArch64Bit())
-    return "e-m:e-p:64:64-i64:64-i128:128-n64-S128";
-  assert(TT.isArch32Bit() && "only LA32 and LA64 are currently supported");
-  return "e-m:e-p:32:32-i64:64-n32-S128";
+static std::string computeDataLayout(const Triple &TT, StringRef CPU,
+                                     const TargetOptions &Options) {
+  std::string Ret;
+  LoongArchABIInfo ABI = LoongArchABIInfo::computeTargetABI(TT, CPU, Options.MCOptions);
+
+  Ret += "e";
+
+  if (ABI.IsLP32())
+    Ret += "-m:m";
+  else
+    Ret += "-m:e";
+
+  // Pointers are 32 bit on some ABIs.
+  if (!ABI.IsLP64())
+    Ret += "-p:32:32";
+
+  // 8 and 16 bit integers only need to have natural alignment, but try to
+  // align them to 32 bits. 64 bit integers have natural alignment.
+  Ret += "-i8:8:32-i16:16:32-i64:64";
+
+  // 32 bit registers are always available and the stack is at least 64 bit
+  // aligned. On LP64 64 bit registers are also available and the stack is
+  // 128 bit aligned.
+  if (ABI.IsLP64() || ABI.IsLPX32())
+    Ret += "-n32:64-S128";
+  else
+    Ret += "-n32-S64";
+
+  return Ret;
 }
 
-static Reloc::Model getEffectiveRelocModel(const Triple &TT,
+static Reloc::Model getEffectiveRelocModel(bool JIT,
                                            Optional<Reloc::Model> RM) {
-  return RM.value_or(Reloc::Static);
+  if (!RM.hasValue() || JIT)
+    return Reloc::Static;
+  return *RM;
 }
 
-LoongArchTargetMachine::LoongArchTargetMachine(
-    const Target &T, const Triple &TT, StringRef CPU, StringRef FS,
-    const TargetOptions &Options, Optional<Reloc::Model> RM,
-    Optional<CodeModel::Model> CM, CodeGenOpt::Level OL, bool JIT)
-    : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
-                        getEffectiveRelocModel(TT, RM),
+// On function prologue, the stack is created by decrementing
+// its pointer. Once decremented, all references are done with positive
+// offset from the stack/frame pointer, using StackGrowsUp enables
+// an easier handling.
+// Using CodeModel::Large enables different CALL behavior.
+LoongArchTargetMachine::LoongArchTargetMachine(const Target &T, const Triple &TT,
+                                     StringRef CPU, StringRef FS,
+                                     const TargetOptions &Options,
+                                     Optional<Reloc::Model> RM,
+                                     Optional<CodeModel::Model> CM,
+                                     CodeGenOpt::Level OL, bool JIT)
+    : LLVMTargetMachine(T, computeDataLayout(TT, CPU, Options), TT,
+                        CPU, FS, Options, getEffectiveRelocModel(JIT, RM),
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
-      TLOF(std::make_unique<TargetLoweringObjectFileELF>()) {
+      TLOF(std::make_unique<LoongArchTargetObjectFile>()),
+      ABI(LoongArchABIInfo::computeTargetABI(TT, CPU, Options.MCOptions)) {
   initAsmInfo();
 }
 
@@ -57,44 +108,45 @@ LoongArchTargetMachine::~LoongArchTargetMachine() = default;
 const LoongArchSubtarget *
 LoongArchTargetMachine::getSubtargetImpl(const Function &F) const {
   Attribute CPUAttr = F.getFnAttribute("target-cpu");
-  Attribute TuneAttr = F.getFnAttribute("tune-cpu");
   Attribute FSAttr = F.getFnAttribute("target-features");
 
-  std::string CPU =
-      CPUAttr.isValid() ? CPUAttr.getValueAsString().str() : TargetCPU;
-  std::string TuneCPU =
-      TuneAttr.isValid() ? TuneAttr.getValueAsString().str() : CPU;
-  std::string FS =
-      FSAttr.isValid() ? FSAttr.getValueAsString().str() : TargetFS;
+  std::string CPU = !CPUAttr.hasAttribute(Attribute::None)
+                        ? CPUAttr.getValueAsString().str()
+                        : TargetCPU;
+  std::string FS = !FSAttr.hasAttribute(Attribute::None)
+                       ? FSAttr.getValueAsString().str()
+                       : TargetFS;
 
-  std::string Key = CPU + TuneCPU + FS;
-  auto &I = SubtargetMap[Key];
+  // FIXME: This is related to the code below to reset the target options,
+  // we need to know whether or not the soft float flag is set on the
+  // function, so we can enable it as a subtarget feature.
+  bool softFloat =
+      F.hasFnAttribute("use-soft-float") &&
+      F.getFnAttribute("use-soft-float").getValueAsString() == "true";
+
+  if (softFloat)
+    FS += FS.empty() ? "+soft-float" : ",+soft-float";
+
+  auto &I = SubtargetMap[CPU + FS];
   if (!I) {
     // This needs to be done before we create a new subtarget since any
     // creation will depend on the TM and the code generation flags on the
     // function that reside in TargetOptions.
     resetTargetOptions(F);
-    auto ABIName = Options.MCOptions.getABIName();
-    if (const MDString *ModuleTargetABI = dyn_cast_or_null<MDString>(
-            F.getParent()->getModuleFlag("target-abi"))) {
-      auto TargetABI = LoongArchABI::getTargetABI(ABIName);
-      if (TargetABI != LoongArchABI::ABI_Unknown &&
-          ModuleTargetABI->getString() != ABIName) {
-        report_fatal_error("-target-abi option != target-abi module flag");
-      }
-      ABIName = ModuleTargetABI->getString();
-    }
-    I = std::make_unique<LoongArchSubtarget>(TargetTriple, CPU, TuneCPU, FS,
-                                             ABIName, *this);
+    I = std::make_unique<LoongArchSubtarget>(TargetTriple, CPU, FS, *this,
+        MaybeAlign(F.getParent()->getOverrideStackAlignment()));
   }
   return I.get();
 }
 
 namespace {
+
+/// LoongArch Code Generator Pass Configuration Options.
 class LoongArchPassConfig : public TargetPassConfig {
 public:
   LoongArchPassConfig(LoongArchTargetMachine &TM, PassManagerBase &PM)
-      : TargetPassConfig(TM, PM) {}
+      : TargetPassConfig(TM, PM) {
+  }
 
   LoongArchTargetMachine &getLoongArchTargetMachine() const {
     return getTM<LoongArchTargetMachine>();
@@ -102,22 +154,42 @@ public:
 
   void addIRPasses() override;
   bool addInstSelector() override;
+  void addPreEmitPass() override;
 };
-} // end namespace
 
-TargetPassConfig *
-LoongArchTargetMachine::createPassConfig(PassManagerBase &PM) {
+} // end anonymous namespace
+
+TargetPassConfig *LoongArchTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new LoongArchPassConfig(*this, PM);
 }
 
 void LoongArchPassConfig::addIRPasses() {
-  addPass(createAtomicExpandPass());
-
   TargetPassConfig::addIRPasses();
+  addPass(createAtomicExpandPass());
+}
+// Install an instruction selector pass using
+// the ISelDag to gen LoongArch code.
+bool LoongArchPassConfig::addInstSelector() {
+  addPass(createLoongArchModuleISelDagPass());
+  addPass(createLoongArchISelDag(getLoongArchTargetMachine(), getOptLevel()));
+  return false;
 }
 
-bool LoongArchPassConfig::addInstSelector() {
-  addPass(createLoongArchISelDag(getLoongArchTargetMachine()));
+TargetTransformInfo
+LoongArchTargetMachine::getTargetTransformInfo(const Function &F) const {
+  LLVM_DEBUG(errs() << "Target Transform Info Pass Added\n");
+  return TargetTransformInfo(BasicTTIImpl(this, F));
+}
 
-  return false;
+// Implemented by targets that want to run passes immediately before
+// machine code is emitted. return true if -print-machineinstrs should
+// print out the code after the passes.
+void LoongArchPassConfig::addPreEmitPass() {
+  // Expand pseudo instructions that are sensitive to register allocation.
+  addPass(createLoongArchExpandPseudoPass());
+
+  // Relax conditional branch instructions if they're otherwise out of
+  // range of their destination.
+  // This pass must be run after any pseudo instruction expansion
+  addPass(&BranchRelaxationPassID);
 }

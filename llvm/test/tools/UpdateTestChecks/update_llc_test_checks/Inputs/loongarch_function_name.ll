@@ -1,6 +1,6 @@
 ; Check that we accept functions with '$' in the name.
 
-; RUN: llc -mtriple=loongarch32-unknown-linux < %s | FileCheck %s
+; RUN: llc -mtriple=loongarch64-unknown-linux < %s | FileCheck %s
 
 define hidden i32 @"_Z54bar$ompvariant$bar"() {
 entry:

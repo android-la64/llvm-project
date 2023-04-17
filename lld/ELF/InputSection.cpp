@@ -597,6 +597,7 @@ static int64_t getTlsTpOffset(const Symbol &s) {
     // data and 0xf000 of the program's TLS segment.
     return s.getVA(0) + (tls->p_vaddr & (tls->p_align - 1)) - 0x7000;
   case EM_RISCV:
+  case EM_LOONGARCH:
     return s.getVA(0) + (tls->p_vaddr & (tls->p_align - 1));
 
     // Variant 2.
@@ -616,6 +617,7 @@ uint64_t InputSectionBase::getRelocTargetVA(const InputFile *file, RelType type,
                                             const Symbol &sym, RelExpr expr) {
   switch (expr) {
   case R_ABS:
+  case R_LARCH_ABS:
   case R_DTPREL:
   case R_RELAX_TLS_LD_TO_LE_ABS:
   case R_RELAX_GOT_PC_NOPIC:
@@ -637,6 +639,8 @@ uint64_t InputSectionBase::getRelocTargetVA(const InputFile *file, RelType type,
   case R_GOTREL:
   case R_PPC64_RELAX_TOC:
     return sym.getVA(a) - in.got->getVA();
+  case R_LARCH_GOTREL:
+    return sym.getGotVA() - in.got->getVA();
   case R_GOTPLTREL:
     return sym.getVA(a) - in.gotPlt->getVA();
   case R_GOTPLT:
@@ -902,7 +906,7 @@ void InputSection::relocateNonAlloc(uint8_t *buf, ArrayRef<RelTy> rels) {
     // R_ABS/R_DTPREL and some other relocations can be used from non-SHF_ALLOC
     // sections.
     if (expr == R_ABS || expr == R_DTPREL || expr == R_GOTPLTREL ||
-        expr == R_RISCV_ADD) {
+        expr == R_RISCV_ADD || expr == R_LARCH_ABS) {
       target.relocateNoSym(bufLoc, type, SignExtend64<bits>(sym.getVA(addend)));
       continue;
     }

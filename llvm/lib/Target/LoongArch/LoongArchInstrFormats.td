@@ -1,4 +1,4 @@
-//===- LoongArchInstrFormats.td - LoongArch Instr. Formats -*- tablegen -*-===//
+//===-- LoongArchInstrFormats.td - LoongArch Instruction Formats -----*- tablegen -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -9,396 +9,782 @@
 //===----------------------------------------------------------------------===//
 //  Describe LoongArch instructions format
 //
-//  opcode       - operation code.
-//  rd           - destination register operand.
-//  r{j/k}       - source register operand.
-//  immN         - immediate data operand.
+//  CPU INSTRUCTION FORMATS
+//
+//  opcode  - operation code.
+//  rs      - src reg.
+//  rt      - dst reg (on a 2 regs instr) or src reg (on a 3 reg instr).
+//  rd      - dst reg, only used on 3 regs instr.
+//  shamt   - only used on shift instructions, contains the shift amount.
+//  funct   - combined with opcode field give us an operation code.
 //
 //===----------------------------------------------------------------------===//
 
-class LAInst<dag outs, dag ins, string opcstr, string opnstr,
-             list<dag> pattern = []>
-    : Instruction {
+class StdArch {
+
+  bits<32> Inst;
+}
+
+// Format specifies the encoding used by the instruction.  This is part of the
+// ad-hoc solution used to emit machine instruction encodings by our machine
+// code emitter.
+class Format<bits<4> val> {
+  bits<4> Value = val;
+}
+
+def Pseudo    : Format<0>;
+def FrmR      : Format<1>;
+def FrmI      : Format<2>;
+def FrmJ      : Format<3>;
+def FrmFR     : Format<4>;
+def FrmFI     : Format<5>;
+def FrmOther  : Format<6>;
+
+// Generic LoongArch Format
+class InstLA<dag outs, dag ins, string asmstr, list<dag> pattern, Format f>
+    : Instruction
+{
   field bits<32> Inst;
-  // SoftFail is a field the disassembler can use to provide a way for
-  // instructions to not match without killing the whole decode process. It is
-  // mainly used for ARM, but Tablegen expects this field to exist or it fails
-  // to build the decode table.
-  field bits<32> SoftFail = 0;
+  Format Form = f;
 
   let Namespace = "LoongArch";
+
   let Size = 4;
+
   let OutOperandList = outs;
-  let InOperandList = ins;
-  let AsmString = opcstr # "\t" # opnstr;
-  let Pattern = pattern;
+  let InOperandList  = ins;
+  let AsmString   = asmstr;
+  let Pattern     = pattern;
+
+  //
+  // Attributes specific to LoongArch instructions...
+  //
+  bits<4> FormBits     = Form.Value;
+  bit isCTI            = 0; // Any form of Control Transfer Instruction.
+                            // Required for LoongArch
+  bit hasForbiddenSlot = 0; // Instruction has a forbidden slot.
+  bit IsPCRelativeLoad = 0; // Load instruction with implicit source register
+                            // ($pc) and with explicit offset and destination
+                            // register
+  bit hasFCCRegOperand = 0; // Instruction uses $fcc<X> register
+
+  // TSFlags layout should be kept in sync with MCTargetDesc/LoongArchBaseInfo.h.
+  let TSFlags{3-0}   = FormBits;
+  let TSFlags{4}     = isCTI;
+  let TSFlags{5}     = hasForbiddenSlot;
+  let TSFlags{6}     = IsPCRelativeLoad;
+  let TSFlags{7}     = hasFCCRegOperand;
+
+  let DecoderNamespace = "LoongArch";
+
+  field bits<32> SoftFail = 0;
 }
 
-// Pseudo instructions
-class Pseudo<dag outs, dag ins, list<dag> pattern = [], string opcstr = "",
-             string opnstr = "">
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  let isPseudo = 1;
-  let isCodeGenOnly = 1;
+class InstForm<dag outs, dag ins, string asmstr, list<dag> pattern,
+               Format f, string opstr = ""> :
+  InstLA<outs, ins, asmstr, pattern, f> {
+  string BaseOpcode = opstr;
+  string Arch;
 }
 
-// 2R-type
-// <opcode | rj | rd>
-class Fmt2R<bits<22> op, dag outs, dag ins, string opcstr, string opnstr,
-            list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
+class LoongArch_str<string opstr> {
+  string Arch;
+  string BaseOpcode = opstr;
+}
+
+//===-----------------------------------------------------------===//
+// Format instruction classes in the LoongArch
+//===-----------------------------------------------------------===//
+
+// R2 classes: 2 registers
+//
+class R2 : StdArch {
   bits<5> rj;
   bits<5> rd;
 
-  let Inst{31-10} = op;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 3R-type
-// <opcode | rk | rj | rd>
-class Fmt3R<bits<17> op, dag outs, dag ins, string opcstr, string opnstr,
-            list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<5> rk;
+class R2I<bits<5> op>
+    : R2 {
+  let Inst{31-15} = 0x0;
+  let Inst{14-10} = op;
+}
+
+class R2F<bits<10> op>
+    : R2 {
+  bits<5> fj;
+  bits<5> fd;
+
+  let Inst{31-20} = 0x11;
+  let Inst{19-10} = op;
+  let Inst{9-5} = fj;
+  let Inst{4-0} = fd;
+}
+
+class MOVFI<bits<10> op>
+    : R2 {
   bits<5> rj;
+  bits<5> fd;
+
+  let Inst{31-20} = 0x11;
+  let Inst{19-10} = op;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = fd;
+}
+
+class MOVIF<bits<10> op>
+    : R2 {
+  bits<5> fj;
   bits<5> rd;
 
-  let Inst{31-15} = op;
-  let Inst{14-10} = rk;
+  let Inst{31-20} = 0x11;
+  let Inst{19-10} = op;
+  let Inst{9-5} = fj;
+  let Inst{4-0} = rd;
+}
+
+class R2P<bits<3> op>
+    : R2 {
+  let Inst{31-13} = 0x3240;
+  let Inst{12-10} = op;
+}
+
+class R2_CSR<bits<8> op>
+    : StdArch {
+  bits<5> rj;
+  bits<5> rd;
+  bits<14> csr;
+
+  let Inst{31-24} = op;
+  let Inst{23-10} = csr;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 3RI2-type
-// <opcode | I2 | rk | rj | rd>
-class Fmt3RI2<bits<15> op, dag outs, dag ins, string opcstr, string opnstr,
-              list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<2> imm2;
-  bits<5> rk;
-  bits<5> rj;
+class R2_SI16<bits<6> op>
+    : StdArch {
   bits<5> rd;
+  bits<5> rj;
+  bits<16> si16;
 
-  let Inst{31-17} = op;
-  let Inst{16-15} = imm2;
-  let Inst{14-10} = rk;
+  let Inst{31-26} = op;
+  let Inst{25-10} = si16;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 3RI3-type
-// <opcode | I3 | rk | rj | rd>
-class Fmt3RI3<bits<14> op, dag outs, dag ins, string opcstr, string opnstr,
-              list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<3> imm3;
-  bits<5> rk;
+class R2_COND<bits<2> op, bits<5> cond>
+    : StdArch {
+  bits<5> fj;
+  bits<5> fk;
+  bits<3> cd;
+
+  let Inst{31-22} = 0x30;
+  let Inst{21-20} = op;
+  let Inst{19-15} = cond;
+  let Inst{14-10} = fk;
+  let Inst{9-5} = fj;
+  let Inst{4-3} = 0b00;
+  let Inst{2-0} = cd;
+}
+
+class R2_LEVEL<bits<14> op>
+    : StdArch {
   bits<5> rj;
   bits<5> rd;
+  bits<8> level;
 
   let Inst{31-18} = op;
-  let Inst{17-15} = imm3;
+  let Inst{17-10} = level;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = rd;
+}
+
+class IMM32<bits<6> op>
+    : StdArch {
+  let Inst{31-16} = 0x0648;
+  let Inst{15-10} = op;
+  let Inst{9-0} = 0;
+}
+
+class WAIT_FM : StdArch {
+  bits<15> hint;
+
+  let Inst{31-15} = 0xc91;
+  let Inst{14-0} = hint;
+}
+
+class R2_INVTLB : StdArch {
+  bits<5> rj;
+  bits<5> op;
+  bits<5> rk;
+
+  let Inst{31-15} = 0xc93;
+  let Inst{14-10} = rk;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = op;
+}
+
+class BAR_FM<bits<1> op>
+    : StdArch {
+  bits<15> hint;
+
+  let Inst{31-16} = 0x3872;
+  let Inst{15} = op;
+  let Inst{14-0} = hint;
+}
+
+class PRELD_FM : StdArch {
+  bits<5> rj;
+  bits<5> hint;
+  bits<12> imm12;
+
+  let Inst{31-22} = 0xab;
+  let Inst{21-10} = imm12;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = hint;
+}
+
+// R3 classes: 3 registers
+//
+class R3 : StdArch {
+  bits<5> rk;
+  bits<5> rj;
+  bits<5> rd;
+
   let Inst{14-10} = rk;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 2RI5-type
-// <opcode | I5 | rj | rd>
-class Fmt2RI5<bits<17> op, dag outs, dag ins, string opcstr, string opnstr,
-              list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<5> imm5;
-  bits<5> rj;
+class R3I<bits<7> op>
+    : R3 {
+  let Inst{31-22} = 0x0;
+  let Inst{21-15} = op;
+}
+
+class R3F<bits<6> op>
+    : R3 {
+  bits<5> fk;
+  bits<5> fj;
+  bits<5> fd;
+
+  let Inst{31-21} = 0x8;
+  let Inst{20-15} = op;
+  let Inst{14-10} = fk;
+  let Inst{9-5} = fj;
+  let Inst{4-0} = fd;
+}
+
+class R3MI<bits<8> op>
+    : R3 {
+  let Inst{31-23} = 0x70;
+  let Inst{22-15} = op;
+}
+
+class AM<bits<6> op> : StdArch {
+  bits<5> rk;
+  bits<17> addr; // rj + 12 bits offset 0
   bits<5> rd;
 
-  let Inst{31-15} = op;
+  let Inst{31-21} = 0x1c3;
+  let Inst{20-15} = op;
+  let Inst{14-10} = rk;
+  let Inst{9-5} = addr{16-12};
+  let Inst{4-0} = rd;
+}
+
+class R3MF<bits<8> op>
+    : R3 {
+  bits<5> fd;
+
+  let Inst{31-23} = 0x70;
+  let Inst{22-15} = op;
+  let Inst{4-0} = fd;
+}
+
+class R3_SA2<bits<5> op>
+    : StdArch {
+  bits<5> rk;
+  bits<5> rj;
+  bits<5> rd;
+  bits<2> sa;
+
+  let Inst{31-22} = 0x0;
+  let Inst{21-17} = op;
+  let Inst{16-15} = sa;
+  let Inst{14-10} = rk;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = rd;
+}
+
+class R3_SA3 : StdArch {
+  bits<5> rk;
+  bits<5> rj;
+  bits<5> rd;
+  bits<3> sa;
+
+  let Inst{31-18} = 3;
+  let Inst{17-15} = sa;
+  let Inst{14-10} = rk;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = rd;
+}
+
+// R4 classes: 4 registers
+//
+class R4MUL<bits<4> op>
+    : StdArch {
+  bits<5> fa;
+  bits<5> fk;
+  bits<5> fj;
+  bits<5> fd;
+
+  let Inst{31-24} = 0x8;
+  let Inst{23-20} = op;
+  let Inst{19-15} = fa;
+  let Inst{14-10} = fk;
+  let Inst{9-5} = fj;
+  let Inst{4-0} = fd;
+}
+
+class R4CMP<bits<2> op>
+    : StdArch {
+  bits<5> cond;
+  bits<5> fk;
+  bits<5> fj;
+  bits<3> cd;
+
+  let Inst{31-22} = 0x30;
+  let Inst{21-20} = op;
+  let Inst{19-15} = cond;
+  let Inst{14-10} = fk;
+  let Inst{9-5} = fj;
+  let Inst{4-3} = 0;
+  let Inst{2-0} = cd;
+}
+
+class R4SEL : StdArch {
+  bits<3> ca;
+  bits<5> fk;
+  bits<5> fj;
+  bits<5> fd;
+
+  let Inst{31-18} = 0x340;
+  let Inst{17-15} = ca;
+  let Inst{14-10} = fk;
+  let Inst{9-5} = fj;
+  let Inst{4-0} = fd;
+}
+
+// R2_IMM5 classes: 2registers and 1 5bit-immediate
+//
+class R2_IMM5<bits<2> op>
+    : StdArch {
+  bits<5> rj;
+  bits<5> rd;
+  bits<5> imm5;
+
+  let Inst{31-20} = 0x4;
+  let Inst{19-18} = op;
+  let Inst{17-15} = 0x1;
   let Inst{14-10} = imm5;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 2RI6-type
-// <opcode | I6 | rj | rd>
-class Fmt2RI6<bits<16> op, dag outs, dag ins, string opcstr, string opnstr,
-              list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<6> imm6;
+// R2_IMM6 classes: 2registers and 1 6bit-immediate
+//
+class R2_IMM6<bits<2> op>
+    : StdArch {
   bits<5> rj;
   bits<5> rd;
+  bits<6> imm6;
 
-  let Inst{31-16} = op;
+  let Inst{31-20} = 0x4;
+  let Inst{19-18} = op;
+  let Inst{17-16} = 0x1;
   let Inst{15-10} = imm6;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 2RI8-type
-// <opcode | I8 | rj | rd>
-class Fmt2RI8<bits<14> op, dag outs, dag ins, string opcstr, string opnstr,
-              list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<8> imm8;
-  bits<5> rj;
+// R2_IMM12 classes: 2 registers and 1 12bit-immediate
+//
+class LOAD_STORE<bits<4> op>
+    : StdArch {
   bits<5> rd;
+  bits<17> addr;
 
-  let Inst{31-18} = op;
-  let Inst{17-10} = imm8;
-  let Inst{9-5} = rj;
+  let Inst{31-26} = 0xa;
+  let Inst{25-22} = op;
+  let Inst{21-10} = addr{11-0};
+  let Inst{9-5} = addr{16-12};
   let Inst{4-0} = rd;
 }
-
-// 2RI12-type
-// <opcode | I12 | rj | rd>
-class Fmt2RI12<bits<10> op, dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<12> imm12;
+// for reloc
+class LOAD_STORE_RRI<bits<4> op>
+    : StdArch {
   bits<5> rj;
   bits<5> rd;
+  bits<12> imm12;
 
-  let Inst{31-22} = op;
+  let Inst{31-26} = 0xa;
+  let Inst{25-22} = op;
   let Inst{21-10} = imm12;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 2RI14-type
-// <opcode | I14 | rj | rd>
-class Fmt2RI14<bits<8> op, dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<14> imm14;
+
+class R2_IMM12<bits<3> op>
+    : StdArch {
   bits<5> rj;
   bits<5> rd;
+  bits<12> imm12;
 
-  let Inst{31-24} = op;
-  let Inst{23-10} = imm14;
+  let Inst{31-25} = 0x1;
+  let Inst{24-22} = op;
+  let Inst{21-10} = imm12;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 2RI16-type
-// <opcode | I16 | rj | rd>
-class Fmt2RI16<bits<6> op, dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<16> imm16;
+class LEA_ADDI_FM<bits<3> op>
+    : StdArch {
+  bits<5> rd;
+  bits<17> addr;
+
+  let Inst{31-25} = 0x1;
+  let Inst{24-22} = op;
+  let Inst{21-10} = addr{11-0};
+  let Inst{9-5} = addr{16-12};
+  let Inst{4-0} = rd;
+}
+
+// R2_IMM14 classes: 2 registers and 1 14bit-immediate
+//
+class LL_SC<bits<3> op>
+    : StdArch {
+  bits<5> rd;
+  bits<19> addr;
+
+  let Inst{31-27} = 4;
+  let Inst{26-24} = op;
+  let Inst{23-10} = addr{13-0};
+  let Inst{9-5} = addr{18-14};
+  let Inst{4-0} = rd;
+}
+
+// R2_IMM16 classes: 2 registers and 1 16bit-immediate
+//
+class R2_IMM16BEQ<bits<6> op>
+    : StdArch {
   bits<5> rj;
   bits<5> rd;
+  bits<16> offs16;
 
   let Inst{31-26} = op;
-  let Inst{25-10} = imm16;
+  let Inst{25-10} = offs16;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// 1RI20-type
-// <opcode | I20 | rd>
-class Fmt1RI20<bits<7> op, dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<20> imm20;
+class R2_IMM16JIRL : StdArch {
+  bits<5> rj;
   bits<5> rd;
+  bits<16> offs16;
+
+  let Inst{31-26} = 0x13;
+  let Inst{25-10} = offs16;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = rd;
+}
+
+// R1_IMM21 classes: 1 registers and 1 21bit-immediate
+//
+class R1_IMM21BEQZ<bits<6> op>
+    : StdArch {
+  bits<5> rj;
+  bits<21> offs21;
+
+  let Inst{31-26} = op;
+  let Inst{25-10} = offs21{15-0};
+  let Inst{9-5} = rj;
+  let Inst{4-0} = offs21{20-16};
+}
+
+class R1_CSR<bits<13> op>
+    : StdArch {
+  bits<5> rd;
+  bits<14> csr;
+
+  let Inst{31-24} = op{7-0};
+  let Inst{23-10} = csr;
+  let Inst{9-5} = op{12-8};
+  let Inst{4-0} = rd;
+}
+
+class R1_SI20<bits<7> op>
+    : StdArch {
+  bits<5> rd;
+  bits<20> si20;
 
   let Inst{31-25} = op;
-  let Inst{24-5} = imm20;
+  let Inst{24-5} = si20;
   let Inst{4-0} = rd;
 }
 
-// 1RI21-type
-// <opcode | I21[15:0] | rj | I21[20:16]>
-class Fmt1RI21<bits<6> op, dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<21> imm21;
+class R1_CACHE : StdArch {
+  bits<5> rj;
+  bits<5> op;
+  bits<12> si12;
+
+  let Inst{31-22} = 0x18;
+  let Inst{21-10} = si12;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = op;
+}
+
+class R1_SEQ<bits<14> op>
+    : StdArch {
+  bits<5> rj;
+  bits<5> offset;
+  bits<8> seq;
+
+  let Inst{31-18} = op;
+  let Inst{17-10} = seq;
+  let Inst{9-5} = rj;
+  let Inst{4-0} = 0b00000;
+}
+
+class R1_BCEQZ<bits<2> op>
+    : StdArch {
+  bits<21> offset;
+  bits<3> cj;
+
+  let Inst{31-26} = 0x12;
+  let Inst{25-10} = offset{15-0};
+  let Inst{9-8} = op;
+  let Inst{7-5} = cj;
+  let Inst{4-0} = offset{20-16};
+}
+
+// IMM26 classes: 1 26bit-immediate
+//
+class IMM26B<bits<6> op>
+    : StdArch {
+  bits<26> offs26;
+
+  let Inst{31-26} = op;
+  let Inst{25-10} = offs26{15-0};
+  let Inst{9-0} = offs26{25-16};
+}
+
+// LoongArch Pseudo Instructions Format
+class LoongArchPseudo<dag outs, dag ins, list<dag> pattern> :
+  InstLA<outs, ins, "", pattern, Pseudo> {
+  let isCodeGenOnly = 1;
+  let isPseudo = 1;
+}
+
+// Pseudo-instructions for alternate assembly syntax (never used by codegen).
+// These are aliases that require C++ handling to convert to the target
+// instruction, while InstAliases can be handled directly by tblgen.
+class LoongArchAsmPseudoInst<dag outs, dag ins, string asmstr>:
+  InstLA<outs, ins, asmstr, [], Pseudo> {
+  let isPseudo = 1;
+  let Pattern = [];
+}
+
+//
+// Misc instruction classes
+class ASSERT<bits<2> op>
+    : StdArch {
+  bits<5> rk;
   bits<5> rj;
 
-  let Inst{31-26} = op;
-  let Inst{25-10} = imm21{15-0};
+  let Inst{31-17} = 0x0;
+  let Inst{16-15} = op;
+  let Inst{14-10} = rk;
   let Inst{9-5} = rj;
-  let Inst{4-0} = imm21{20-16};
+  let Inst{4-0} = 0x0;
 }
 
-// I15-type
-// <opcode | I15>
-class FmtI15<bits<17> op, dag outs, dag ins, string opcstr, string opnstr,
-             list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<15> imm15;
+class CODE15<bits<7> op>
+    : StdArch {
+  bits<15> Code;
 
-  let Inst{31-15} = op;
-  let Inst{14-0} = imm15;
+  let Inst{31-22} = 0x0;
+  let Inst{21-15} = op;
+  let Inst{14-0} = Code;
 }
 
-// I26-type
-// <opcode | I26[15:0] | I26[25:16]>
-class FmtI26<bits<6> op, dag outs, dag ins, string opcstr, string opnstr,
-             list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<26> imm26;
-
-  let Inst{31-26} = op;
-  let Inst{25-10} = imm26{15-0};
-  let Inst{9-0} = imm26{25-16};
-}
-
-// FmtBSTR_W
-// <opcode[11:1] | msbw | opcode[0] | lsbw | rj | rd>
-class FmtBSTR_W<bits<12> op, dag outs, dag ins, string opcstr, string opnstr,
-                list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
+class INSERT_BIT32<bits<1> op>
+    : StdArch {
   bits<5> msbw;
   bits<5> lsbw;
   bits<5> rj;
   bits<5> rd;
 
-  let Inst{31-21} = op{11-1};
+  let Inst{31-21} = 0x3;
   let Inst{20-16} = msbw;
-  let Inst{15} = op{0};
+  let Inst{15} = op;
   let Inst{14-10} = lsbw;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// FmtBSTR_D
-// <opcode | msbd | lsbd | rj | rd>
-class FmtBSTR_D<bits<10> op, dag outs, dag ins, string opcstr, string opnstr,
-                list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
+class INSERT_BIT64<bits<1> op>
+    : StdArch {
   bits<6> msbd;
   bits<6> lsbd;
   bits<5> rj;
   bits<5> rd;
 
-  let Inst{31-22} = op;
+  let Inst{31-23} = 0x1;
+  let Inst{22} = op;
   let Inst{21-16} = msbd;
   let Inst{15-10} = lsbd;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// FmtASRT
-// <opcode | rk | rj | 0x0>
-class FmtASRT<bits<17> op, dag outs, dag ins, string opcstr, string opnstr,
-              list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<5> rk;
+class MOVGPR2FCSR: StdArch {
+  bits<5> fcsr;
   bits<5> rj;
 
-  let Inst{31-15} = op;
-  let Inst{14-10} = rk;
+  let Inst{31-10} = 0x4530;
   let Inst{9-5} = rj;
-  let Inst{4-0} = 0x0;
+  let Inst{4-0} = fcsr;
 }
 
-// FmtPRELD
-// < 0b0010101011 | I12 | rj | I5>
-class FmtPRELD<dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<12> imm12;
-  bits<5> rj;
-  bits<5> imm5;
-
-  let Inst{31-22} = 0b0010101011;
-  let Inst{21-10} = imm12;
-  let Inst{9-5} = rj;
-  let Inst{4-0} = imm5;
-}
-
-// FmtPRELDX
-// < 0b00111000001011000 | rk | rj | I5>
-class FmtPRELDX<dag outs, dag ins, string opcstr, string opnstr,
-                list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<5> rk;
-  bits<5> rj;
-  bits<5> imm5;
-
-  let Inst{31-15} = 0b00111000001011000;
-  let Inst{14-10} = rk;
-  let Inst{9-5} = rj;
-  let Inst{4-0} = imm5;
-}
-
-// FmtCSR
-// <opcode[12:5] | csr_num | opcode[4:0] | rd>
-class FmtCSR<bits<13> op, dag outs, dag ins, string opcstr, string opnstr,
-             list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<14> csr_num;
+class MOVFCSR2GPR: StdArch {
+  bits<5> fcsr;
   bits<5> rd;
 
-  let Inst{31-24} = op{12-5};
-  let Inst{23-10} = csr_num;
-  let Inst{9-5} = op{4-0};
+  let Inst{31-10} = 0x4532;
+  let Inst{9-5} = fcsr;
   let Inst{4-0} = rd;
 }
 
-// FmtCSRXCHG
-// <opcode | csr_num | rj | rd>
-class FmtCSRXCHG<bits<8> op, dag outs, dag ins, string opcstr, string opnstr,
-                 list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<14> csr_num;
+class MOVFGR2FCFR: StdArch {
+  bits<3> cd;
+  bits<5> fj;
+
+  let Inst{31-10} = 0x4534;
+  let Inst{9-5} = fj;
+  let Inst{4-3} = 0;
+  let Inst{2-0} = cd;
+}
+
+class MOVFCFR2FGR: StdArch {
+  bits<3> cj;
+  bits<5> fd;
+
+  let Inst{31-10} = 0x4535;
+  let Inst{9-8} = 0;
+  let Inst{7-5} = cj;
+  let Inst{4-0} = fd;
+}
+
+class MOVGPR2FCFR: StdArch {
+  bits<3> cd;
   bits<5> rj;
+
+  let Inst{31-10} = 0x4536;
+  let Inst{9-5} = rj;
+  let Inst{4-3} = 0;
+  let Inst{2-0} = cd;
+}
+
+class MOVFCFR2GPR: StdArch {
+  bits<3> cj;
   bits<5> rd;
 
-  let Inst{31-24} = op;
-  let Inst{23-10} = csr_num;
+  let Inst{31-10} = 0x4537;
+  let Inst{9-8} = 0;
+  let Inst{7-5} = cj;
+  let Inst{4-0} = rd;
+}
+
+class LoongArchInst : InstLA<(outs), (ins), "", [], FrmOther> {
+}
+class JMP_OFFS_2R<bits<6> op> : LoongArchInst {
+  bits<5>  rs;
+  bits<5>  rd;
+  bits<16> offset;
+
+  bits<32> Inst;
+
+  let Inst{31-26} = op;
+  let Inst{25-10} = offset;
+  let Inst{9-5} = rs;
+  let Inst{4-0}  = rd;
+}
+
+class FJ<bits<6> op> : StdArch
+{
+  bits<26> target;
+
+  let Inst{31-26} = op;
+  let Inst{25-10}  = target{15-0};
+  let Inst{9-0}  = target{25-16};
+}
+
+class LUI_FM : StdArch {
+  bits<5> rt;
+  bits<16> imm16;
+
+  let Inst{31-26} = 0xf;
+  let Inst{25-21} = 0;
+  let Inst{20-16} = rt;
+  let Inst{15-0}  = imm16;
+}
+
+class  R2_IMM12M_STD<bits<4> op> : StdArch {
+  bits<5> rj;
+  bits<5> rd;
+  bits<12> imm12;
+
+  let Inst{31-26} = 0xa;
+  let Inst{25-22} = op;
+  let Inst{21-10} = imm12;
   let Inst{9-5} = rj;
   let Inst{4-0} = rd;
 }
 
-// FmtCACOP
-// <0b0000011000 | I12 | rj | I5>
-class FmtCACOP<dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<12> imm12;
-  bits<5> rj;
-  bits<5> op;
+class LLD_2R<bits<3> Code> : LoongArchInst {
+  bits<5> rd;
+  bits<19> addr;
+  bits<5> rj = addr{18-14};
+  bits<14> offset = addr{13-0};
 
-  let Inst{31-22} = 0b0000011000;
-  let Inst{21-10} = imm12;
+  bits<32> Inst;
+
+  let Inst{31-27} = 0x4;
+  let Inst{26-24} = Code;
+  let Inst{23-10} = offset;
   let Inst{9-5} = rj;
-  let Inst{4-0} = op;
+  let Inst{4-0} = rd;
 }
 
-// FmtIMM32
-// <I32>
-class FmtI32<bits<32> op, string opstr, list<dag> pattern = []>
-    : LAInst<(outs), (ins), opstr, "", pattern> {
-  let Inst{31-0} = op;
+class CEQS_FM<bits<2> op> {
+  bits<5> fj;
+  bits<5> fk;
+  bits<3> cd;
+  bits<5> cond;
+
+  bits<32> Inst;
+
+  let Inst{31-22} = 0x30;
+  let Inst{21-20} = op;
+  let Inst{19-15} = cond;
+  let Inst{14-10} = fk;
+  let Inst{9-5} = fj;
+  let Inst{4-3} = 0b00;
+  let Inst{2-0} = cd;
 }
 
-// FmtINVTLB
-// <0b00000110010010011 | rk | rj | I5>
-class FmtINVTLB<dag outs, dag ins, string opcstr, string opnstr,
-                list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<5> rk;
-  bits<5> rj;
-  bits<5> op;
-
-  let Inst{31-15} = 0b00000110010010011;
-  let Inst{14-10} = rk;
-  let Inst{9-5} = rj;
-  let Inst{4-0} = op;
-}
-
-// FmtLDPTE
-// <0b00000110010001 | seq | rj | 00000>
-class FmtLDPTE<dag outs, dag ins, string opcstr, string opnstr,
-               list<dag> pattern = []>
-    : LAInst<outs, ins, opcstr, opnstr, pattern> {
-  bits<8> seq;
-  bits<5> rj;
-
-  let Inst{31-18} = 0b00000110010001;
-  let Inst{17-10} = seq;
-  let Inst{9-5} = rj;
-  let Inst{4-0} = 0b00000;
-}

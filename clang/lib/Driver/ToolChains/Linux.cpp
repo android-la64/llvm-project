@@ -8,6 +8,7 @@
 
 #include "Linux.h"
 #include "Arch/ARM.h"
+#include "Arch/LoongArch.h"
 #include "Arch/Mips.h"
 #include "Arch/PPC.h"
 #include "Arch/RISCV.h"
@@ -84,6 +85,11 @@ std::string Linux::getMultiarchTriple(const Driver &D,
     return "aarch64-linux-gnu";
   case llvm::Triple::aarch64_be:
     return "aarch64_be-linux-gnu";
+
+  case llvm::Triple::loongarch32:
+    return "loongarch32-linux-gnu";
+  case llvm::Triple::loongarch64:
+    return "loongarch64-linux-gnu";
 
   case llvm::Triple::m68k:
     return "m68k-linux-gnu";
@@ -473,6 +479,11 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
     Loader = HF ? "ld-linux-armhf.so.3" : "ld-linux.so.3";
     break;
   }
+  case llvm::Triple::loongarch32:
+  case llvm::Triple::loongarch64:
+    LibDir = "lib" + tools::loongarch::getLoongArchABILibSuffix(Args, Triple);
+    Loader = "ld.so.1";
+    break;
   case llvm::Triple::m68k:
     LibDir = "lib";
     Loader = "ld.so.1";
@@ -741,6 +752,7 @@ SanitizerMask Linux::getSupportedSanitizers() const {
   const bool IsRISCV64 = getTriple().getArch() == llvm::Triple::riscv64;
   const bool IsSystemZ = getTriple().getArch() == llvm::Triple::systemz;
   const bool IsHexagon = getTriple().getArch() == llvm::Triple::hexagon;
+  const bool IsLoongArch64 = getTriple().getArch() == llvm::Triple::loongarch64;
   SanitizerMask Res = ToolChain::getSupportedSanitizers();
   Res |= SanitizerKind::Address;
   Res |= SanitizerKind::PointerCompare;
@@ -751,19 +763,20 @@ SanitizerMask Linux::getSupportedSanitizers() const {
   Res |= SanitizerKind::Memory;
   Res |= SanitizerKind::Vptr;
   Res |= SanitizerKind::SafeStack;
-  if (IsX86_64 || IsMIPS64 || IsAArch64)
+  if (IsX86_64 || IsMIPS64 || IsAArch64 || IsLoongArch64)
     Res |= SanitizerKind::DataFlow;
   if (IsX86_64 || IsMIPS64 || IsAArch64 || IsX86 || IsArmArch || IsPowerPC64 ||
-      IsRISCV64 || IsSystemZ || IsHexagon)
+      IsRISCV64 || IsSystemZ || IsHexagon || IsLoongArch64)
     Res |= SanitizerKind::Leak;
-  if (IsX86_64 || IsMIPS64 || IsAArch64 || IsPowerPC64 || IsSystemZ)
+  if (IsX86_64 || IsMIPS64 || IsAArch64 || IsPowerPC64 || IsSystemZ ||
+      IsLoongArch64)
     Res |= SanitizerKind::Thread;
   if (IsX86_64)
     Res |= SanitizerKind::KernelMemory;
   if (IsX86 || IsX86_64)
     Res |= SanitizerKind::Function;
   if (IsX86_64 || IsMIPS64 || IsAArch64 || IsX86 || IsMIPS || IsArmArch ||
-      IsPowerPC64 || IsHexagon)
+      IsPowerPC64 || IsHexagon || IsLoongArch64)
     Res |= SanitizerKind::Scudo;
   if (IsX86_64 || IsAArch64) {
     Res |= SanitizerKind::HWAddress;

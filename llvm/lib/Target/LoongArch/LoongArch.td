@@ -1,139 +1,107 @@
-//===-- LoongArch.td - Describe the LoongArch Target -------*- tablegen -*-===//
+//===-- LoongArch.td - Describe the LoongArch Target Machine ---------*- tablegen -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+// This is the top level entry point for the LoongArch target.
+//===----------------------------------------------------------------------===//
+
+//===----------------------------------------------------------------------===//
+// Target-independent interfaces
+//===----------------------------------------------------------------------===//
 
 include "llvm/Target/Target.td"
 
-//===----------------------------------------------------------------------===//
-// LoongArch subtarget features and instruction predicates.
-//===----------------------------------------------------------------------===//
+// The overall idea of the PredicateControl class is to chop the Predicates list
+// into subsets that are usually overridden independently. This allows
+// subclasses to partially override the predicates of their superclasses without
+// having to re-add all the existing predicates.
+class PredicateControl {
+  // Predicates for the encoding scheme in use such as HasStdEnc
+  list<Predicate> EncodingPredicates = [];
+  // Predicates for the GPR size such as is64Bit
+  list<Predicate> GPRPredicates = [];
+  // Predicates for the FGR size and layout such as IsFP64bit
+  list<Predicate> FGRPredicates = [];
+  // Predicates for the instruction group membership such as ISA's.
+  list<Predicate> InsnPredicates = [];
+  // Predicate for the ISA extension that an instruction belongs to.
+  list<Predicate> ExtPredicate = [];
+  // Predicate for marking the instruction as usable in hard-float mode only.
+  list<Predicate> HardFloatPredicate = [];
+  // Predicates for anything else
+  list<Predicate> AdditionalPredicates = [];
+  list<Predicate> Predicates = !listconcat(EncodingPredicates,
+                                           GPRPredicates,
+                                           FGRPredicates,
+                                           InsnPredicates,
+                                           HardFloatPredicate,
+                                           ExtPredicate,
+                                           AdditionalPredicates);
+}
 
-// LoongArch is divided into two versions, the 32-bit version (LA32) and the
-// 64-bit version (LA64).
-def Feature64Bit
-    : SubtargetFeature<"64bit", "HasLA64", "true",
-                       "LA64 Basic Integer and Privilege Instruction Set">;
-def IsLA64
-    : Predicate<"Subtarget->is64Bit()">,
-      AssemblerPredicate<(all_of Feature64Bit),
-                         "LA64 Basic Integer and Privilege Instruction Set">;
-def IsLA32
-    : Predicate<"!Subtarget->is64Bit()">,
-      AssemblerPredicate<(all_of(not Feature64Bit)),
-                         "LA32 Basic Integer and Privilege Instruction Set">;
-
-defvar LA32 = DefaultMode;
-def LA64 : HwMode<"+64bit">;
-
-// Single Precision floating point
-def FeatureBasicF
-    : SubtargetFeature<"f", "HasBasicF", "true",
-                       "'F' (Single-Precision Floating-Point)">;
-def HasBasicF
-    : Predicate<"Subtarget->hasBasicF()">,
-      AssemblerPredicate<(all_of FeatureBasicF),
-                         "'F' (Single-Precision Floating-Point)">;
-
-// Double Precision floating point
-def FeatureBasicD
-    : SubtargetFeature<"d", "HasBasicD", "true",
-                       "'D' (Double-Precision Floating-Point)",
-                       [FeatureBasicF]>;
-def HasBasicD
-    : Predicate<"Subtarget->hasBasicD()">,
-      AssemblerPredicate<(all_of FeatureBasicD),
-                         "'D' (Double-Precision Floating-Point)">;
-
-// Loongson SIMD eXtension (LSX)
-def FeatureExtLSX
-    : SubtargetFeature<"lsx", "HasExtLSX", "true",
-                       "'LSX' (Loongson SIMD Extension)", [FeatureBasicD]>;
-def HasExtLSX
-    : Predicate<"Subtarget->hasExtLSX()">,
-      AssemblerPredicate<(all_of FeatureExtLSX),
-                         "'LSX' (Loongson SIMD Extension)">;
-
-// Loongson Advanced SIMD eXtension (LASX)
-def FeatureExtLASX
-    : SubtargetFeature<"lasx", "HasExtLASX", "true",
-                       "'LASX' (Loongson Advanced SIMD Extension)",
-                       [FeatureExtLSX]>;
-def HasExtLASX
-    : Predicate<"Subtarget->hasExtLASX()">,
-      AssemblerPredicate<(all_of FeatureExtLASX),
-                         "'LASX' (Loongson Advanced SIMD Extension)">;
-
-// Loongson VirtualiZation (LVZ)
-def FeatureExtLVZ
-    : SubtargetFeature<"lvz", "HasExtLVZ", "true",
-                       "'LVZ' (Loongson Virtualization Extension)">;
-def HasExtLVZ
-    : Predicate<"Subtarget->hasExtLVZ()">,
-      AssemblerPredicate<(all_of FeatureExtLVZ),
-                         "'LVZ' (Loongson Virtualization Extension)">;
-
-// Loongson Binary Translation (LBT)
-def FeatureExtLBT
-    : SubtargetFeature<"lbt", "HasExtLBT", "true",
-                       "'LBT' (Loongson Binary Translation Extension)">;
-def HasExtLBT
-    : Predicate<"Subtarget->hasExtLBT()">,
-      AssemblerPredicate<(all_of FeatureExtLBT),
-                         "'LBT' (Loongson Binary Translation Extension)">;
+// Like Requires<> but for the AdditionalPredicates list
+class AdditionalRequires<list<Predicate> preds> {
+  list<Predicate> AdditionalPredicates = preds;
+}
 
 //===----------------------------------------------------------------------===//
-// Registers, instruction descriptions ...
+// LoongArch Subtarget features                                                    //
+//===----------------------------------------------------------------------===//
+
+def FeatureFP64Bit     : SubtargetFeature<"fp64", "IsFP64bit", "true",
+                                "Support 64-bit FP registers">;
+def FeatureSingleFloat : SubtargetFeature<"single-float", "IsSingleFloat",
+                                "true", "Only supports single precision float">;
+def FeatureSoftFloat   : SubtargetFeature<"soft-float", "IsSoftFloat", "true",
+                                "Does not support floating point instructions">;
+def Feature64Bit       : SubtargetFeature<"64bit", "HasLA64", "true",
+                                "Support LA64 ISA",
+                                [FeatureFP64Bit]>;
+def FeatureLSX : SubtargetFeature<"lsx", "HasLSX", "true", "Support LSX">;
+
+def FeatureLASX : SubtargetFeature<"lasx", "HasLASX", "true", "Support LASX", [FeatureLSX]>;
+
+def FeatureUnalignedAccess
+    : SubtargetFeature<"unaligned-access", "UnalignedAccess", "true",
+                       "Allow all unaligned memory access">;
+//===----------------------------------------------------------------------===//
+// Register File, Calling Conv, Instruction Descriptions
 //===----------------------------------------------------------------------===//
 
 include "LoongArchRegisterInfo.td"
-include "LoongArchCallingConv.td"
 include "LoongArchInstrInfo.td"
+include "LoongArchCallingConv.td"
+
+def LoongArchInstrInfo : InstrInfo;
 
 //===----------------------------------------------------------------------===//
 // LoongArch processors supported.
 //===----------------------------------------------------------------------===//
 
-def : ProcessorModel<"generic-la32", NoSchedModel, []>;
-def : ProcessorModel<"generic-la64", NoSchedModel, [Feature64Bit]>;
+def : ProcessorModel<"la264", NoSchedModel, [Feature64Bit]>;
 
-def : ProcessorModel<"la464", NoSchedModel, [Feature64Bit,
-                                             FeatureExtLASX,
-                                             FeatureExtLVZ,
-                                             FeatureExtLBT]>;
+def : ProcessorModel<"la364", NoSchedModel, [Feature64Bit]>;
 
-//===----------------------------------------------------------------------===//
-// Define the LoongArch target.
-//===----------------------------------------------------------------------===//
-
-def LoongArchInstrInfo : InstrInfo {
-  // guess mayLoad, mayStore, and hasSideEffects
-  // This option is a temporary migration help. It will go away.
-  let guessInstructionProperties = 1;
-}
+def : ProcessorModel<"la464", NoSchedModel,
+                     [Feature64Bit, FeatureUnalignedAccess]>;
 
 def LoongArchAsmParser : AsmParser {
-  let ShouldEmitMatchRegisterAltName = 1;
-  let AllowDuplicateRegisterNames = 1;
+  let ShouldEmitMatchRegisterName = 0;
 }
 
 def LoongArchAsmParserVariant : AsmParserVariant {
   int Variant = 0;
+
   // Recognize hard coded registers.
   string RegisterPrefix = "$";
-}
-
-def LoongArchAsmWriter : AsmWriter {
-  int PassSubtarget = 1;
 }
 
 def LoongArch : Target {
   let InstructionSet = LoongArchInstrInfo;
   let AssemblyParsers = [LoongArchAsmParser];
   let AssemblyParserVariants = [LoongArchAsmParserVariant];
-  let AssemblyWriters = [LoongArchAsmWriter];
   let AllowRegisterRenaming = 1;
 }

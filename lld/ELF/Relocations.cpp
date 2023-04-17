@@ -200,7 +200,7 @@ static bool needsPlt(RelExpr expr) {
 static bool needsGot(RelExpr expr) {
   return oneof<R_GOT, R_GOT_OFF, R_MIPS_GOT_LOCAL_PAGE, R_MIPS_GOT_OFF,
                R_MIPS_GOT_OFF32, R_AARCH64_GOT_PAGE_PC, R_GOT_PC, R_GOTPLT,
-               R_AARCH64_GOT_PAGE>(expr);
+               R_AARCH64_GOT_PAGE, R_LARCH_GOTREL>(expr);
 }
 
 // True if this expression is of the form Sym - X, where X is a position in the
@@ -210,7 +210,6 @@ static bool isRelExpr(RelExpr expr) {
                R_PPC64_RELAX_TOC, R_AARCH64_PAGE_PC, R_RELAX_GOT_PC,
                R_RISCV_PC_INDIRECT, R_PPC64_RELAX_GOT_PC>(expr);
 }
-
 
 static RelExpr toPlt(RelExpr expr) {
   switch (expr) {
@@ -518,8 +517,7 @@ int64_t RelocationScanner::computeAddend(const RelTy &rel, RelExpr expr,
 }
 
 // Custom error message if Sym is defined in a discarded section.
-template <class ELFT>
-static std::string maybeReportDiscarded(Undefined &sym) {
+template <class ELFT> static std::string maybeReportDiscarded(Undefined &sym) {
   auto *file = dyn_cast_or_null<ObjFile<ELFT>>(sym.file);
   if (!file || !sym.discardedSecIdx ||
       file->getSections()[sym.discardedSecIdx] != &InputSection::discarded)
@@ -931,9 +929,10 @@ static bool canDefineSymbolInExecutable(Symbol &sym) {
   // If the symbol has default visibility the symbol defined in the
   // executable will preempt it.
   // Note that we want the visibility of the shared symbol itself, not
-  // the visibility of the symbol in the output file we are producing. That is
-  // why we use Sym.stOther.
-  if ((sym.stOther & 0x3) == STV_DEFAULT)
+  // the visibility of the symbol in the output file we are producing.
+  // Use `!= STV_PROTECTED` but not `== STV_DEFAULT`. This is a partial backport
+  // from llvm-16.
+  if ((sym.stOther & 0x3) != STV_PROTECTED)
     return true;
 
   // If we are allowed to break address equality of functions, defining
@@ -962,7 +961,8 @@ bool RelocationScanner::isStaticLinkTimeConstant(RelExpr e, RelType type,
             R_MIPS_GOTREL, R_MIPS_GOT_OFF, R_MIPS_GOT_OFF32, R_MIPS_GOT_GP_PC,
             R_AARCH64_GOT_PAGE_PC, R_GOT_PC, R_GOTONLY_PC, R_GOTPLTONLY_PC,
             R_PLT_PC, R_PLT_GOTPLT, R_PPC32_PLTREL, R_PPC64_CALL_PLT,
-            R_PPC64_RELAX_TOC, R_RISCV_ADD, R_AARCH64_GOT_PAGE>(e))
+            R_PPC64_RELAX_TOC, R_RISCV_ADD, R_AARCH64_GOT_PAGE, R_LARCH_GOTREL,
+            R_LARCH_ABS>(e))
     return true;
 
   // These never do, except if the entire file is position dependent or if
@@ -1003,7 +1003,7 @@ bool RelocationScanner::isStaticLinkTimeConstant(RelExpr e, RelType type,
   // We set the final symbols values for linker script defined symbols later.
   // They always can be computed as a link time constant.
   if (sym.scriptDefined)
-      return true;
+    return true;
 
   error("relocation " + toString(type) + " cannot refer to absolute symbol: " +
         toString(sym) + getLocation(sec, sym, relOff));
@@ -1049,6 +1049,11 @@ void RelocationScanner::processAux(RelExpr expr, RelType type, uint64_t offset,
   if (canWrite) {
     RelType rel = target.getDynRel(type);
     if (expr == R_GOT || (rel == target.symbolicRel && !sym.isPreemptible)) {
+      if (config->emachine == EM_LOONGARCH && rel == target.symbolicRel &&
+          isa<EhInputSection>(sec)) {
+        sec.relocations.push_back({expr, type, offset, addend, &sym});
+        return;
+      }
       addRelativeReloc(sec, offset, sym, addend, expr, type);
       return;
     } else if (rel != 0) {
@@ -1140,6 +1145,12 @@ void RelocationScanner::processAux(RelExpr expr, RelType type, uint64_t offset,
     }
   }
 
+  if ((config->shared || config->pie) && config->emachine == EM_LOONGARCH &&
+      (type == R_LARCH_32 || type == R_LARCH_64)) {
+    sec.relocations.push_back({expr, type, offset, addend, &sym});
+    return;
+  }
+
   errorOrWarn("relocation " + toString(type) + " cannot be used against " +
               (sym.getName().empty() ? "local symbol"
                                      : "symbol '" + toString(sym) + "'") +
@@ -1194,13 +1205,13 @@ static unsigned handleTlsRelocation(RelType type, Symbol &sym,
     return 1;
   }
 
-  // ARM, Hexagon and RISC-V do not support GD/LD to IE/LE relaxation.  For
-  // PPC64, if the file has missing R_PPC64_TLSGD/R_PPC64_TLSLD, disable
-  // relaxation as well.
-  bool toExecRelax = !config->shared && config->emachine != EM_ARM &&
-                     config->emachine != EM_HEXAGON &&
-                     config->emachine != EM_RISCV &&
-                     !c.file->ppc64DisableTLSRelax;
+  // ARM, Hexagon, LoongArch and RISC-V do not support GD/LD to IE/LE
+  // relaxation.  For PPC64, if the file has missing
+  // R_PPC64_TLSGD/R_PPC64_TLSLD, disable relaxation as well.
+  bool toExecRelax =
+      !config->shared && config->emachine != EM_ARM &&
+      config->emachine != EM_HEXAGON && config->emachine != EM_LOONGARCH &&
+      config->emachine != EM_RISCV && !c.file->ppc64DisableTLSRelax;
 
   // If we are producing an executable and the symbol is non-preemptable, it
   // must be defined and the code sequence can be relaxed to use Local-Exec.
@@ -1215,8 +1226,7 @@ static unsigned handleTlsRelocation(RelType type, Symbol &sym,
   // being suitable for being dynamically loaded via dlopen. GOT[e0] is the
   // module index, with a special value of 0 for the current module. GOT[e1] is
   // unused. There only needs to be one module index entry.
-  if (oneof<R_TLSLD_GOT, R_TLSLD_GOTPLT, R_TLSLD_PC, R_TLSLD_HINT>(
-          expr)) {
+  if (oneof<R_TLSLD_GOT, R_TLSLD_GOTPLT, R_TLSLD_PC, R_TLSLD_HINT>(expr)) {
     // Local-Dynamic relocs can be relaxed to Local-Exec.
     if (toExecRelax) {
       c.relocations.push_back(
@@ -1404,10 +1414,10 @@ template <class ELFT, class RelTy> void RelocationScanner::scanOne(RelTy *&i) {
       // R_HEX_GD_PLT_B22_PCREL (call a@GDPLT) is transformed into
       // call __tls_get_addr even if the symbol is non-preemptible.
       if (!(config->emachine == EM_HEXAGON &&
-           (type == R_HEX_GD_PLT_B22_PCREL ||
-            type == R_HEX_GD_PLT_B22_PCREL_X ||
-            type == R_HEX_GD_PLT_B32_PCREL_X)))
-      expr = fromPlt(expr);
+            (type == R_HEX_GD_PLT_B22_PCREL ||
+             type == R_HEX_GD_PLT_B22_PCREL_X ||
+             type == R_HEX_GD_PLT_B32_PCREL_X)))
+        expr = fromPlt(expr);
     } else if (!isAbsoluteValue(sym)) {
       expr = target.adjustGotPcExpr(type, addend, relocatedAddr);
     }

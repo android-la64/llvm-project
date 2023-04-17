@@ -102,6 +102,9 @@ public:
     case GenericAArch64:
       return T.isAArch64();
 
+    case GenericLoongArch:
+      return T.isLoongArch();
+
     case GenericMIPS:
       return T.isMIPS();
 
@@ -166,6 +169,7 @@ public:
     case Fuchsia:
     case GenericARM:
     case GenericAArch64:
+    case GenericLoongArch:
     case GenericMIPS:
       // TODO: ARM-style pointers to member functions put the discriminator in
       //       the this adjustment, so they don't require functions to have any
@@ -250,6 +254,7 @@ public:
     case GenericItanium:
     case iOS:   // old iOS compilers did not follow this rule
     case Microsoft:
+    case GenericLoongArch:
     case GenericMIPS:
     case XL:
       return true;
@@ -288,6 +293,7 @@ public:
     case GenericAArch64:
     case GenericARM:
     case iOS:
+    case GenericLoongArch:
     case GenericMIPS:
     case XL:
       return UseTailPaddingUnlessPOD03;

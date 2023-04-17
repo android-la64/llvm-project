@@ -1,3 +1,4 @@
+;UNSUPPORTED: loongarch64
 ; REQUIRES: cxx-shared-library
 ; RUN: %lli -jit-kind=mcjit -remote-mcjit -mcjit-remote-process=lli-child-target%exeext %s
 ; XFAIL: arm, cygwin, windows-msvc, windows-gnu

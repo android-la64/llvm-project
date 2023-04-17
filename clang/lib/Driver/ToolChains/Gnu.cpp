@@ -9,6 +9,7 @@
 #include "Gnu.h"
 #include "Arch/ARM.h"
 #include "Arch/CSKY.h"
+#include "Arch/LoongArch.h"
 #include "Arch/Mips.h"
 #include "Arch/PPC.h"
 #include "Arch/RISCV.h"
@@ -255,6 +256,10 @@ static const char *getLDMOption(const llvm::Triple &T, const ArgList &Args) {
   case llvm::Triple::armeb:
   case llvm::Triple::thumbeb:
     return isArmBigEndian(T, Args) ? "armelfb_linux_eabi" : "armelf_linux_eabi";
+  case llvm::Triple::loongarch32:
+    return "elf32loongarch";
+  case llvm::Triple::loongarch64:
+    return "elf64loongarch";
   case llvm::Triple::m68k:
     return "m68kelf";
   case llvm::Triple::ppc:
@@ -854,6 +859,63 @@ void tools::gnutools::Assembler::ConstructJob(Compilation &C,
     Args.AddLastArg(CmdArgs, options::OPT_march_EQ);
     normalizeCPUNamesForAssembler(Args, CmdArgs);
 
+    break;
+  }
+  case llvm::Triple::loongarch32:
+  case llvm::Triple::loongarch64: {
+    StringRef CPUName;
+    StringRef ABIName;
+    loongarch::getLoongArchCPUAndABI(Args, getToolChain().getTriple(), CPUName, ABIName);
+    ABIName = loongarch::getGnuCompatibleLoongArchABIName(ABIName);
+
+    //FIXME: Currently gnu as doesn't support -march
+    //CmdArgs.push_back("-march=loongarch");
+    //CmdArgs.push_back(CPUName.data());
+
+    //FIXME: modify loongarch::getGnuCompatibleLoongArchABIName()
+    CmdArgs.push_back("-mabi=lp64");
+    //CmdArgs.push_back(ABIName.data());
+
+    // -mno-shared should be emitted unless -fpic, -fpie, -fPIC, -fPIE,
+    // or -mshared (not implemented) is in effect.
+    if (RelocationModel == llvm::Reloc::Static)
+      CmdArgs.push_back("-mno-shared");
+
+    // LLVM doesn't support -mplt yet and acts as if it is always given.
+    // However, -mplt has no effect with the LP64 ABI.
+    if (ABIName != "64")
+      CmdArgs.push_back("-call_nonpic");
+
+    break;
+
+    // Add the last -mfp32/-mfp64.
+    if (Arg *A = Args.getLastArg(options::OPT_mfp32,
+                                 options::OPT_mfp64)) {
+      A->claim();
+      A->render(Args, CmdArgs);
+    }
+
+    if (Arg *A = Args.getLastArg(options::OPT_mlsx, options::OPT_mno_lsx)) {
+      // Do not use AddLastArg because not all versions of LoongArch assembler
+      // support -mlsx / -mno-lsx options.
+      if (A->getOption().matches(options::OPT_mlsx))
+        CmdArgs.push_back(Args.MakeArgString("-mlsx"));
+    }
+
+    if (Arg *A = Args.getLastArg(options::OPT_mlasx, options::OPT_mno_lasx)) {
+      // Do not use AddLastArg because not all versions of LoongArch assembler
+      // support -mlasx / -mno-lasx options.
+      if (A->getOption().matches(options::OPT_mlasx))
+        CmdArgs.push_back(Args.MakeArgString("-mlasx"));
+    }
+
+    Args.AddLastArg(CmdArgs, options::OPT_mhard_float,
+                    options::OPT_msoft_float);
+
+    Args.AddLastArg(CmdArgs, options::OPT_mdouble_float,
+                    options::OPT_msingle_float);
+
+    AddAssemblerKPIC(getToolChain(), Args, CmdArgs);
     break;
   }
   case llvm::Triple::mips:
@@ -2294,6 +2356,10 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
       "s390x-linux-gnu", "s390x-unknown-linux-gnu", "s390x-ibm-linux-gnu",
       "s390x-suse-linux", "s390x-redhat-linux"};
 
+  static const char *const LoongArch64LibDirs[] = {"/lib64", "/lib"};
+  static const char *const LoongArch64Triples[] = {
+      "loongarch64-linux-gnu", "loongarch64-unknown-linux-gnu",
+      "loongarch64-loongson-linux-gnu", "loongarch64-redhat-linux"};
 
   using std::begin;
   using std::end;
@@ -2465,6 +2531,10 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
       BiarchLibDirs.append(begin(X32LibDirs), end(X32LibDirs));
       BiarchTripleAliases.append(begin(X32Triples), end(X32Triples));
     }
+    break;
+  case llvm::Triple::loongarch64:
+    LibDirs.append(begin(LoongArch64LibDirs), end(LoongArch64LibDirs));
+    TripleAliases.append(begin(LoongArch64Triples), end(LoongArch64Triples));
     break;
   case llvm::Triple::m68k:
     LibDirs.append(begin(M68kLibDirs), end(M68kLibDirs));
@@ -2823,6 +2893,7 @@ bool Generic_GCC::isPICDefault() const {
   switch (getArch()) {
   case llvm::Triple::x86_64:
     return getTriple().isOSWindows();
+  case llvm::Triple::loongarch64:
   case llvm::Triple::mips64:
   case llvm::Triple::mips64el:
     return true;
@@ -2863,6 +2934,8 @@ bool Generic_GCC::IsIntegratedAssemblerDefault() const {
   case llvm::Triple::ppc64le:
   case llvm::Triple::riscv32:
   case llvm::Triple::riscv64:
+  case llvm::Triple::loongarch32:
+  case llvm::Triple::loongarch64:
   case llvm::Triple::sparc:
   case llvm::Triple::sparcel:
   case llvm::Triple::sparcv9:

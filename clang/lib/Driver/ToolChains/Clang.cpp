@@ -11,6 +11,7 @@
 #include "Arch/AArch64.h"
 #include "Arch/ARM.h"
 #include "Arch/CSKY.h"
+#include "Arch/LoongArch.h"
 #include "Arch/M68k.h"
 #include "Arch/Mips.h"
 #include "Arch/PPC.h"
@@ -317,6 +318,11 @@ static void getTargetFeatures(const Driver &D, const llvm::Triple &Triple,
     arm::getARMTargetFeatures(D, Triple, Args, Features, ForAS);
     break;
 
+  case llvm::Triple::loongarch32:
+  case llvm::Triple::loongarch64:
+    loongarch::getLoongArchTargetFeatures(D, Triple, Args, Features);
+    break;
+
   case llvm::Triple::ppc:
   case llvm::Triple::ppcle:
   case llvm::Triple::ppc64:
@@ -527,6 +533,8 @@ static bool useFramePointerForTargetByDefault(const ArgList &Args,
     // XCore never wants frame pointers, regardless of OS.
     // WebAssembly never wants frame pointers.
     return false;
+  case llvm::Triple::loongarch64:
+  case llvm::Triple::loongarch32:
   case llvm::Triple::ppc:
   case llvm::Triple::ppcle:
   case llvm::Triple::ppc64:
@@ -1794,6 +1802,11 @@ void Clang::RenderTargetOptions(const llvm::Triple &EffectiveTriple,
     CmdArgs.push_back("-fallow-half-arguments-and-returns");
     break;
 
+  case llvm::Triple::loongarch32:
+  case llvm::Triple::loongarch64:
+    AddLoongArchTargetArgs(Args, CmdArgs);
+    break;
+
   case llvm::Triple::mips:
   case llvm::Triple::mipsel:
   case llvm::Triple::mips64:
@@ -1931,6 +1944,45 @@ void Clang::AddAArch64TargetArgs(const ArgList &Args,
   }
 
   AddUnalignedAccessWarning(CmdArgs);
+}
+
+void Clang::AddLoongArchTargetArgs(const ArgList &Args,
+                                   ArgStringList &CmdArgs) const {
+  const Driver &D = getToolChain().getDriver();
+  StringRef CPUName;
+  StringRef ABIName;
+  const llvm::Triple &Triple = getToolChain().getTriple();
+  loongarch::getLoongArchCPUAndABI(Args, Triple, CPUName, ABIName);
+
+  CmdArgs.push_back("-target-abi");
+  CmdArgs.push_back(ABIName.data());
+
+  loongarch::FloatABI ABI = loongarch::getLoongArchFloatABI(D, Args);
+  if (ABI == loongarch::FloatABI::Soft) {
+    // Floating point operations and argument passing are soft.
+    CmdArgs.push_back("-msoft-float");
+    CmdArgs.push_back("-mfloat-abi");
+    CmdArgs.push_back("soft");
+  } else {
+    // Floating point operations and argument passing are hard.
+    assert(ABI == loongarch::FloatABI::Hard && "Invalid float abi!");
+    CmdArgs.push_back("-mfloat-abi");
+    CmdArgs.push_back("hard");
+  }
+
+  if (Arg *A = Args.getLastArg(options::OPT_mcheck_zero_division,
+                               options::OPT_mno_check_zero_division)) {
+    if (A->getOption().matches(options::OPT_mno_check_zero_division)) {
+      CmdArgs.push_back("-mllvm");
+      CmdArgs.push_back("-mnocheck-zero-division");
+    }
+  }
+
+  llvm::Reloc::Model RelocationModel;
+  unsigned PICLevel;
+  bool IsPIE;
+  std::tie(RelocationModel, PICLevel, IsPIE) =
+      ParsePICArgs(getToolChain(), Args);
 }
 
 void Clang::AddMIPSTargetArgs(const ArgList &Args,
@@ -7812,6 +7864,17 @@ const char *Clang::getDependencyFileName(const ArgList &Args,
 
 // Begin ClangAs
 
+void ClangAs::AddLoongArchTargetArgs(const ArgList &Args,
+                                     ArgStringList &CmdArgs) const {
+  StringRef CPUName;
+  StringRef ABIName;
+  const llvm::Triple &Triple = getToolChain().getTriple();
+  loongarch::getLoongArchCPUAndABI(Args, Triple, CPUName, ABIName);
+
+  CmdArgs.push_back("-target-abi");
+  CmdArgs.push_back(ABIName.data());
+}
+
 void ClangAs::AddMIPSTargetArgs(const ArgList &Args,
                                 ArgStringList &CmdArgs) const {
   StringRef CPUName;
@@ -8005,6 +8068,11 @@ void ClangAs::ConstructJob(Compilation &C, const JobAction &JA,
   // Add target specific flags.
   switch (getToolChain().getArch()) {
   default:
+    break;
+
+  case llvm::Triple::loongarch32:
+  case llvm::Triple::loongarch64:
+    AddLoongArchTargetArgs(Args, CmdArgs);
     break;
 
   case llvm::Triple::mips:

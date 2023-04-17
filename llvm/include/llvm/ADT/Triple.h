@@ -232,6 +232,7 @@ public:
     GNUX32,
     GNUILP32,
     CODE16,
+    GNUABILPX32,
     EABI,
     EABIHF,
     Android,
@@ -821,6 +822,16 @@ public:
                    getEnvironment() == Triple::GNUILP32
                ? PointerWidth == 32
                : PointerWidth == 64;
+  }
+
+  /// Tests whether the target is LoongArch 32-bit
+  bool isLoongArch32() const {
+    return getArch() == Triple::loongarch32;
+  }
+
+  /// Tests whether the target is LoongArch 64-bit.
+  bool isLoongArch64() const {
+    return getArch() == Triple::loongarch64;
   }
 
   /// Tests whether the target is LoongArch (32- and 64-bit).

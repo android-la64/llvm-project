@@ -753,7 +753,8 @@ Expected<uint32_t> ELFObjectFile<ELFT>::getSymbolFlags(DataRefImpl Sym) const {
     }
     if (ESym->getType() == ELF::STT_FUNC && (ESym->st_value & 1) == 1)
       Result |= SymbolRef::SF_Thumb;
-  } else if (EF.getHeader().e_machine == ELF::EM_RISCV) {
+  } else if (EF.getHeader().e_machine == ELF::EM_LOONGARCH ||
+             EF.getHeader().e_machine == ELF::EM_RISCV) {
     if (Expected<StringRef> NameOrErr = getSymbolName(Sym)) {
       // Mark empty name symbols used for label differences.
       if (NameOrErr->empty())

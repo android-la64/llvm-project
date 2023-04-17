@@ -257,6 +257,7 @@ StringRef Triple::getEnvironmentTypeName(EnvironmentType Kind) {
   case GNU: return "gnu";
   case GNUABI64: return "gnuabi64";
   case GNUABIN32: return "gnuabin32";
+  case GNUABILPX32: return "gnuabilpx32";
   case GNUEABI: return "gnueabi";
   case GNUEABIHF: return "gnueabihf";
   case GNUX32: return "gnux32";

@@ -1,4 +1,4 @@
-//===-- LoongArchTargetInfo.cpp - LoongArch Target Implementation ---------===//
+//===-- LoongArchTargetInfo.cpp - LoongArch Target Implementation -------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -21,10 +21,14 @@ Target &llvm::getTheLoongArch64Target() {
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeLoongArchTargetInfo() {
-  RegisterTarget<Triple::loongarch32, /*HasJIT=*/false> X(
-      getTheLoongArch32Target(), "loongarch32", "32-bit LoongArch",
-      "LoongArch");
-  RegisterTarget<Triple::loongarch64, /*HasJIT=*/false> Y(
-      getTheLoongArch64Target(), "loongarch64", "64-bit LoongArch",
-      "LoongArch");
+#if 0
+  //TODO: support it in futrue
+  RegisterTarget<Triple::loongarch32,
+                 /*HasJIT=*/false>
+      X(getTheLoongArch32Target(), "loongarch32", "LoongArch (32-bit)", "LoongArch");
+#endif
+  RegisterTarget<Triple::loongarch64,
+                 /*HasJIT=*/true>
+      A(getTheLoongArch64Target(), "loongarch64", "LoongArch (64-bit)",
+        "LoongArch");
 }

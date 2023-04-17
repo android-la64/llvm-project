@@ -37,6 +37,7 @@ class EhReader {
 public:
   EhReader(InputSectionBase *s, ArrayRef<uint8_t> d) : isec(s), d(d) {}
   uint8_t getFdeEncoding();
+  void setPcRelativeEncoding(uint8_t *buf);
   bool hasLSDA();
 
 private:
@@ -131,6 +132,10 @@ uint8_t elf::getFdeEncoding(EhSectionPiece *p) {
   return EhReader(p->sec, p->data()).getFdeEncoding();
 }
 
+void elf::setPcRelativeEncoding(EhSectionPiece *p, uint8_t *buf) {
+  EhReader(p->sec, p->data()).setPcRelativeEncoding(buf);
+}
+
 bool elf::hasLSDA(const EhSectionPiece &p) {
   return EhReader(p.sec, p.data()).hasLSDA();
 }
@@ -157,7 +162,35 @@ StringRef EhReader::getAugmentation() {
   return aug;
 }
 
+void EhReader::setPcRelativeEncoding(uint8_t *buf) {
+  const uint8_t *start = d.begin();
+  StringRef aug = getAugmentation();
+  uint8_t *p = buf + (d.begin() - start);
+  for (char c : aug) {
+    if (c == 'R') {
+      *p = DW_EH_PE_pcrel | DW_EH_PE_sdata8;
+      readByte();
+      p++;
+    } else if (c == 'z') {
+      skipLeb128();
+      p += (d.begin() - start) - (p - buf);
+    } else if (c == 'L') {
+      *p = DW_EH_PE_pcrel | DW_EH_PE_sdata8;
+      readByte();
+      p++;
+    } else if (c == 'P') {
+      *p = DW_EH_PE_indirect | DW_EH_PE_pcrel | DW_EH_PE_sdata8;
+      skipAugP();
+      p += (d.begin() - start) - (p - buf);
+    } else if (c != 'B' && c != 'S') {
+      failOn(aug.data(), "unknown .eh_frame augmentation string: " + aug);
+    }
+  }
+}
+
 uint8_t EhReader::getFdeEncoding() {
+  if ((config->shared || config->pie) && config->emachine == EM_LOONGARCH)
+    return DW_EH_PE_pcrel | DW_EH_PE_sdata8;
   // We only care about an 'R' value, but other records may precede an 'R'
   // record. Unfortunately records are not in TLV (type-length-value) format,
   // so we need to teach the linker how to skip records for each type.

@@ -100,7 +100,7 @@
 // -----------------------------------------------------------------------------
 // internal-isystem for linux with and without musl
 // -----------------------------------------------------------------------------
-// RUN: %clang -### -target hexagon-unknown-linux-musl \
+// RUN: %clang -### -target hexagon-unknown-linux-musl --sysroot= \
 // RUN:   -ccc-install-dir %S/Inputs/hexagon_tree/Tools/bin \
 // RUN:   -resource-dir=%S/Inputs/resource_dir \
 // RUN:   %s 2>&1 \
@@ -110,7 +110,7 @@
 // CHECK008-SAME: {{^}} "-internal-isystem" "[[RESOURCE]]/include"
 // CHECK008-SAME: {{^}} "-internal-externc-isystem" "[[INSTALLED_DIR]]/../target/hexagon/include"
 
-// RUN: %clang -### -target hexagon-unknown-linux \
+// RUN: %clang -### -target hexagon-unknown-linux --sysroot= \
 // RUN:   -ccc-install-dir %S/Inputs/hexagon_tree/Tools/bin \
 // RUN:   -resource-dir=%S/Inputs/resource_dir \
 // RUN:   %s 2>&1 \
