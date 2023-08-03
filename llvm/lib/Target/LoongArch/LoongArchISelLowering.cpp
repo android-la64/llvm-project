@@ -157,7 +157,6 @@ const char *LoongArchTargetLowering::getTargetNodeName(unsigned Opcode) const {
   case LoongArchISD::CMovFP_T:          return "LoongArchISD::CMovFP_T";
   case LoongArchISD::CMovFP_F:          return "LoongArchISD::CMovFP_F";
   case LoongArchISD::TruncIntFP:        return "LoongArchISD::TruncIntFP";
-  case LoongArchISD::DBAR:              return "LoongArchISD::DBAR";
   case LoongArchISD::BSTRPICK:          return "LoongArchISD::BSTRPICK";
   case LoongArchISD::BSTRINS:           return "LoongArchISD::BSTRINS";
   case LoongArchISD::VALL_ZERO:
@@ -4814,13 +4813,9 @@ SDValue LoongArchTargetLowering::lowerEH_RETURN(SDValue Op, SelectionDAG &DAG)
 }
 
 SDValue LoongArchTargetLowering::lowerATOMIC_FENCE(SDValue Op,
-                                              SelectionDAG &DAG) const {
-  // FIXME: Need pseudo-fence for 'singlethread' fences
-  // FIXME: Set SType for weaker fences where supported/appropriate.
-  unsigned SType = 0;
-  SDLoc DL(Op);
-  return DAG.getNode(LoongArchISD::DBAR, DL, MVT::Other, Op.getOperand(0),
-                     DAG.getConstant(SType, DL, MVT::i32));
+                                                   SelectionDAG &DAG) const {
+  // TODO: handle SyncScope::SingleThread.
+  return Op;
 }
 
 SDValue LoongArchTargetLowering::lowerShiftLeftParts(SDValue Op,

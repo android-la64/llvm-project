@@ -93,8 +93,6 @@ class TargetRegisterClass;
     // Software Exception Return.
     EH_RETURN,
 
-    DBAR,
-
     BSTRPICK,
     BSTRINS,
 

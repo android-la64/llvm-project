@@ -21,9 +21,6 @@ def LoongArchBstrpick :  SDNode<"LoongArchISD::BSTRPICK", SDT_Bstrpick>;
 
 def LoongArchBstrins :  SDNode<"LoongArchISD::BSTRINS", SDT_Bstrins>;
 
-def SDT_DBAR             : SDTypeProfile<0, 1, [SDTCisVT<0, i32>]>;
-def LoongArchDBAR : SDNode<"LoongArchISD::DBAR", SDT_DBAR, [SDNPHasChain,SDNPSideEffect]>;
-
 def SDT_LoongArchEHRET : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisPtrTy<1>]>;
 
 def LoongArchehret : SDNode<"LoongArchISD::EH_RETURN", SDT_LoongArchEHRET,

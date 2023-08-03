@@ -4,7 +4,7 @@
 define void @fence_acquire() nounwind {
 ; LA64-LABEL: fence_acquire:
 ; LA64:       # %bb.0:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    jr $ra
   fence acquire
   ret void
@@ -13,7 +13,7 @@ define void @fence_acquire() nounwind {
 define void @fence_release() nounwind {
 ; LA64-LABEL: fence_release:
 ; LA64:       # %bb.0:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 18
 ; LA64-NEXT:    jr $ra
   fence release
   ret void
@@ -22,7 +22,7 @@ define void @fence_release() nounwind {
 define void @fence_acq_rel() nounwind {
 ; LA64-LABEL: fence_acq_rel:
 ; LA64:       # %bb.0:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 16
 ; LA64-NEXT:    jr $ra
   fence acq_rel
   ret void
@@ -31,7 +31,7 @@ define void @fence_acq_rel() nounwind {
 define void @fence_seq_cst() nounwind {
 ; LA64-LABEL: fence_seq_cst:
 ; LA64:       # %bb.0:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 16
 ; LA64-NEXT:    jr $ra
   fence seq_cst
   ret void

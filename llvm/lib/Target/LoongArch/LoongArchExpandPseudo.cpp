@@ -196,8 +196,8 @@ bool LoongArchExpandPseudo::expandAtomicCmpSwapSubword(
   case AtomicOrdering::Acquire:
   case AtomicOrdering::AcquireRelease:
   case AtomicOrdering::SequentiallyConsistent:
-    // TODO: acquire
-    hint = 0;
+    // acquire
+    hint = 0b10100;
     break;
   default:
     hint = 0x700;

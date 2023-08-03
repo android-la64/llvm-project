@@ -27,7 +27,7 @@ define void @cmpxchg_i8_acquire_acquire(i8* %ptr, i8 %cmp, i8 %val) nounwind {
 ; LA64-NEXT:    sc.w $r11, $r7, 0
 ; LA64-NEXT:    beq $r11, $zero, .LBB0_1
 ; LA64-NEXT:  .LBB0_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r10, $r12, $r4
 ; LA64-NEXT:    ext.w.b $r10, $r10
 ; LA64-NEXT:  # %bb.4:
@@ -62,7 +62,7 @@ define void @cmpxchg_i8_release_acquire(i8* %ptr, i8 %cmp, i8 %val) nounwind {
 ; LA64-NEXT:    sc.w $r11, $r7, 0
 ; LA64-NEXT:    beq $r11, $zero, .LBB1_1
 ; LA64-NEXT:  .LBB1_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r10, $r12, $r4
 ; LA64-NEXT:    ext.w.b $r10, $r10
 ; LA64-NEXT:  # %bb.4:
@@ -134,7 +134,7 @@ define void @cmpxchg_i16_acquire_acquire(i16* %ptr, i16 %cmp, i16 %val) nounwind
 ; LA64-NEXT:    sc.w $r11, $r7, 0
 ; LA64-NEXT:    beq $r11, $zero, .LBB3_1
 ; LA64-NEXT:  .LBB3_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r8, $r12, $r4
 ; LA64-NEXT:    ext.w.h $r8, $r8
 ; LA64-NEXT:  # %bb.4:
@@ -170,7 +170,7 @@ define void @cmpxchg_i16_release_acquire(i16* %ptr, i16 %cmp, i16 %val) nounwind
 ; LA64-NEXT:    sc.w $r11, $r7, 0
 ; LA64-NEXT:    beq $r11, $zero, .LBB4_1
 ; LA64-NEXT:  .LBB4_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r8, $r12, $r4
 ; LA64-NEXT:    ext.w.h $r8, $r8
 ; LA64-NEXT:  # %bb.4:
@@ -352,7 +352,7 @@ define i8 @cmpxchg_i8_acquire_acquire_reti8(i8* %ptr, i8 %cmp, i8 %val) nounwind
 ; LA64-NEXT:    sc.w $r11, $r7, 0
 ; LA64-NEXT:    beq $r11, $zero, .LBB12_1
 ; LA64-NEXT:  .LBB12_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r4, $r12, $r8
 ; LA64-NEXT:    ext.w.b $r4, $r4
 ; LA64-NEXT:  # %bb.4:
@@ -389,7 +389,7 @@ define i16 @cmpxchg_i16_acquire_acquire_reti16(i16* %ptr, i16 %cmp, i16 %val) no
 ; LA64-NEXT:    sc.w $r11, $r7, 0
 ; LA64-NEXT:    beq $r11, $zero, .LBB13_1
 ; LA64-NEXT:  .LBB13_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r4, $r12, $r8
 ; LA64-NEXT:    ext.w.h $r4, $r4
 ; LA64-NEXT:  # %bb.4:
@@ -465,7 +465,7 @@ define i1 @cmpxchg_i8_acquire_acquire_reti1(i8* %ptr, i8 %cmp, i8 %val) nounwind
 ; LA64-NEXT:    sc.w $r12, $r7, 0
 ; LA64-NEXT:    beq $r12, $zero, .LBB16_1
 ; LA64-NEXT:  .LBB16_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r4, $r13, $r8
 ; LA64-NEXT:    ext.w.b $r4, $r4
 ; LA64-NEXT:  # %bb.4:
@@ -505,7 +505,7 @@ define i1 @cmpxchg_i16_acquire_acquire_reti1(i16* %ptr, i16 %cmp, i16 %val) noun
 ; LA64-NEXT:    sc.w $r12, $r7, 0
 ; LA64-NEXT:    beq $r12, $zero, .LBB17_1
 ; LA64-NEXT:  .LBB17_3:
-; LA64-NEXT:    dbar 0
+; LA64-NEXT:    dbar 20
 ; LA64-NEXT:    srl.w $r4, $r13, $r8
 ; LA64-NEXT:    ext.w.h $r4, $r4
 ; LA64-NEXT:  # %bb.4:

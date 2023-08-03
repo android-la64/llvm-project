@@ -5,7 +5,7 @@ define i8 @load_acquire_i8(ptr %ptr) {
 ; CHECK-LABEL: load_acquire_i8:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.b $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 20
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i8, ptr %ptr acquire, align 1
   ret i8 %val
@@ -15,7 +15,7 @@ define i16 @load_acquire_i16(ptr %ptr) {
 ; CHECK-LABEL: load_acquire_i16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.h $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 20
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i16, ptr %ptr acquire, align 2
   ret i16 %val
@@ -25,7 +25,7 @@ define i32 @load_acquire_i32(ptr %ptr) {
 ; CHECK-LABEL: load_acquire_i32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.w $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 20
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i32, ptr %ptr acquire, align 4
   ret i32 %val
@@ -35,7 +35,7 @@ define i64 @load_acquire_i64(ptr %ptr) {
 ; CHECK-LABEL: load_acquire_i64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.d $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 20
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i64, ptr %ptr acquire, align 8
   ret i64 %val
@@ -117,7 +117,7 @@ define i8 @load_seq_cst_i8(ptr %ptr) {
 ; CHECK-LABEL: load_seq_cst_i8:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.b $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i8, ptr %ptr seq_cst, align 1
   ret i8 %val
@@ -127,7 +127,7 @@ define i16 @load_seq_cst_i16(ptr %ptr) {
 ; CHECK-LABEL: load_seq_cst_i16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.h $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i16, ptr %ptr seq_cst, align 2
   ret i16 %val
@@ -137,7 +137,7 @@ define i32 @load_seq_cst_i32(ptr %ptr) {
 ; CHECK-LABEL: load_seq_cst_i32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.w $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i32, ptr %ptr seq_cst, align 4
   ret i32 %val
@@ -147,7 +147,7 @@ define i64 @load_seq_cst_i64(ptr %ptr) {
 ; CHECK-LABEL: load_seq_cst_i64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    ld.d $r4, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   %val = load atomic i64, ptr %ptr seq_cst, align 8
   ret i64 %val
@@ -156,7 +156,7 @@ define i64 @load_seq_cst_i64(ptr %ptr) {
 define void @store_release_i8(ptr %ptr, i8 signext %v) {
 ; CHECK-LABEL: store_release_i8:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 18
 ; CHECK-NEXT:    st.b $r5, $r4, 0
 ; CHECK-NEXT:    jr $ra
   store atomic i8 %v, ptr %ptr release, align 1
@@ -166,7 +166,7 @@ define void @store_release_i8(ptr %ptr, i8 signext %v) {
 define void @store_release_i16(ptr %ptr, i16 signext %v) {
 ; CHECK-LABEL: store_release_i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 18
 ; CHECK-NEXT:    st.h $r5, $r4, 0
 ; CHECK-NEXT:    jr $ra
   store atomic i16 %v, ptr %ptr release, align 2
@@ -176,7 +176,7 @@ define void @store_release_i16(ptr %ptr, i16 signext %v) {
 define void @store_release_i32(ptr %ptr, i32 signext %v) {
 ; CHECK-LABEL: store_release_i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 18
 ; CHECK-NEXT:    st.w $r5, $r4, 0
 ; CHECK-NEXT:    jr $ra
   store atomic i32 %v, ptr %ptr release, align 4
@@ -186,7 +186,7 @@ define void @store_release_i32(ptr %ptr, i32 signext %v) {
 define void @store_release_i64(ptr %ptr, i64 %v) {
 ; CHECK-LABEL: store_release_i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 18
 ; CHECK-NEXT:    st.d $r5, $r4, 0
 ; CHECK-NEXT:    jr $ra
   store atomic i64 %v, ptr %ptr release, align 8
@@ -268,9 +268,9 @@ define void @store_monotonic_i64(ptr %ptr, i64 %v) {
 define void @store_seq_cst_i8(ptr %ptr, i8 signext %v) {
 ; CHECK-LABEL: store_seq_cst_i8:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    st.b $r5, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   store atomic i8 %v, ptr %ptr seq_cst, align 1
   ret void
@@ -279,9 +279,9 @@ define void @store_seq_cst_i8(ptr %ptr, i8 signext %v) {
 define void @store_seq_cst_i16(ptr %ptr, i16 signext %v) {
 ; CHECK-LABEL: store_seq_cst_i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    st.h $r5, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   store atomic i16 %v, ptr %ptr seq_cst, align 2
   ret void
@@ -290,9 +290,9 @@ define void @store_seq_cst_i16(ptr %ptr, i16 signext %v) {
 define void @store_seq_cst_i32(ptr %ptr, i32 signext %v) {
 ; CHECK-LABEL: store_seq_cst_i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    st.w $r5, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   store atomic i32 %v, ptr %ptr seq_cst, align 4
   ret void
@@ -301,9 +301,9 @@ define void @store_seq_cst_i32(ptr %ptr, i32 signext %v) {
 define void @store_seq_cst_i64(ptr %ptr, i64 %v) {
 ; CHECK-LABEL: store_seq_cst_i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    st.d $r5, $r4, 0
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   store atomic i64 %v, ptr %ptr seq_cst, align 8
   ret void

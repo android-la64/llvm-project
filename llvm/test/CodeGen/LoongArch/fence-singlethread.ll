@@ -4,7 +4,7 @@
 define void @fence_singlethread() {
 ; CHECK-LABEL: fence_singlethread:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 16
 ; CHECK-NEXT:    jr $ra
   fence syncscope("singlethread") seq_cst
   ret void

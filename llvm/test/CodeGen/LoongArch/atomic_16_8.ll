@@ -739,7 +739,7 @@ define void @cmpxchg_8(i8* %ptr) {
 ; CHECK-NEXT:    sc.w $r11, $r7, 0
 ; CHECK-NEXT:    beq $r11, $zero, .LBB22_1
 ; CHECK-NEXT:  .LBB22_3:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 20
 ; CHECK-NEXT:    srl.w $r10, $r12, $r4
 ; CHECK-NEXT:    ext.w.b $r10, $r10
 ; CHECK-NEXT:  # %bb.4:
@@ -775,7 +775,7 @@ define void @cmpxchg_16(i16* %ptr) {
 ; CHECK-NEXT:    sc.w $r11, $r7, 0
 ; CHECK-NEXT:    beq $r11, $zero, .LBB23_1
 ; CHECK-NEXT:  .LBB23_3:
-; CHECK-NEXT:    dbar 0
+; CHECK-NEXT:    dbar 20
 ; CHECK-NEXT:    srl.w $r8, $r12, $r4
 ; CHECK-NEXT:    ext.w.h $r8, $r8
 ; CHECK-NEXT:  # %bb.4:
