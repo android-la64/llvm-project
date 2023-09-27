@@ -99,14 +99,14 @@ void DTLS_Destroy() {
 // "Dynamic thread vector pointers point 0x8000 past the start of each
 //  TLS block." (sysdeps/<arch>/dl-tls.h)
 static const uptr kDtvOffset = 0x8000;
-#elif defined(__riscv)
+#  elif defined(__riscv)
 // This is glibc's TLS_DTV_OFFSET:
 // "Dynamic thread vector pointers point 0x800 past the start of each
 // TLS block." (sysdeps/riscv/dl-tls.h)
 static const uptr kDtvOffset = 0x800;
-#else
+#  else
 static const uptr kDtvOffset = 0;
-#endif
+#  endif
 
 DTLS::DTV *DTLS_on_tls_get_addr(void *arg_void, void *res,
                                 uptr static_tls_begin, uptr static_tls_end) {

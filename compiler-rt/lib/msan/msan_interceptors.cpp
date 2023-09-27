@@ -1742,7 +1742,7 @@ void InitializeInterceptors() {
   INTERCEPT_FUNCTION(dlerror);
   INTERCEPT_FUNCTION(dl_iterate_phdr);
   INTERCEPT_FUNCTION(getrusage);
-#if defined(__mips__)
+#if defined(__mips__) || defined(__loongarch__)
   INTERCEPT_FUNCTION_VER(pthread_create, "GLIBC_2.2");
 #else
   INTERCEPT_FUNCTION(pthread_create);

@@ -287,7 +287,7 @@
 #  if (SANITIZER_ANDROID && defined(__aarch64__)) || SANITIZER_FUCHSIA
 #    define SANITIZER_CAN_USE_ALLOCATOR64 1
 #  elif defined(__mips64) || defined(__aarch64__) || defined(__i386__) || \
-      defined(__arm__) || SANITIZER_RISCV64 || defined(__hexagon__)
+      defined(__arm__) || SANITIZER_RISCV64 || defined(__hexagon__) || defined(__loongarch64)
 #    define SANITIZER_CAN_USE_ALLOCATOR64 0
 #  else
 #    define SANITIZER_CAN_USE_ALLOCATOR64 (SANITIZER_WORDSIZE == 64)
@@ -297,7 +297,7 @@
 // The range of addresses which can be returned my mmap.
 // FIXME: this value should be different on different platforms.  Larger values
 // will still work but will consume more memory for TwoLevelByteMap.
-#if defined(__mips__)
+#if defined(__mips__) || defined(__loongarch__)
 #  if SANITIZER_GO && defined(__mips64)
 #    define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 47)
 #  else
@@ -350,6 +350,21 @@
 #  define SANITIZER_POINTER_FORMAT_LENGTH FIRST_32_SECOND_64(8, 10)
 #else
 #  define SANITIZER_POINTER_FORMAT_LENGTH FIRST_32_SECOND_64(8, 12)
+#endif
+
+#if defined(__loongarch__)
+#  define SANITIZER_LOONGARCH 1
+#  if defined(__loongarch64)
+#    define SANITIZER_LOONGARCH32 0
+#    define SANITIZER_LOONGARCH64 1
+#  else
+#    define SANITIZER_LOONGARCH32 1
+#    define SANITIZER_LOONGARCH64 0
+#  endif
+#else
+#  define SANITIZER_LOONGARCH 0
+#  define SANITIZER_LOONGARCH32 0
+#  define SANITIZER_LOONGARCH64 0
 #endif
 
 /// \macro MSC_PREREQ

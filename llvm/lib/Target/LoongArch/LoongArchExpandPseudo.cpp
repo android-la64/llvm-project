@@ -93,18 +93,6 @@ namespace {
   char LoongArchExpandPseudo::ID = 0;
 }
 
-static bool hasDbar(MachineBasicBlock *MBB) {
-
-  for (MachineBasicBlock::iterator MBBb = MBB->begin(), MBBe = MBB->end();
-       MBBb != MBBe; ++MBBb) {
-    if (MBBb->getOpcode() == LoongArch::DBAR)
-      return true;
-    if (MBBb->mayLoad() || MBBb->mayStore())
-      break;
-  }
-  return false;
-}
-
 bool LoongArchExpandPseudo::expandAtomicCmpSwapSubword(
     MachineBasicBlock &BB, MachineBasicBlock::iterator I,
     MachineBasicBlock::iterator &NMBBI) {
@@ -129,8 +117,8 @@ bool LoongArchExpandPseudo::expandAtomicCmpSwapSubword(
   unsigned Mask2 = I->getOperand(4).getReg();
   unsigned ShiftNewVal = I->getOperand(5).getReg();
   unsigned ShiftAmnt = I->getOperand(6).getReg();
-  unsigned Scratch = I->getOperand(7).getReg();
-  unsigned Scratch2 = I->getOperand(8).getReg();
+  unsigned Scratch = I->getOperand(8).getReg();
+  unsigned Scratch2 = I->getOperand(9).getReg();
 
   // insert new blocks after the current block
   const BasicBlock *LLVM_BB = BB.getBasicBlock();
@@ -201,10 +189,21 @@ bool LoongArchExpandPseudo::expandAtomicCmpSwapSubword(
 
   BuildMI(sinkMBB, DL, TII->get(SEOp), Dest).addReg(Dest);
 
-  if (!hasDbar(sinkMBB)) {
-    MachineBasicBlock::iterator Pos = sinkMBB->begin();
-    BuildMI(*sinkMBB, Pos, DL, TII->get(LoongArch::DBAR)).addImm(DBAR_HINT);
+  AtomicOrdering Ordering =
+      static_cast<AtomicOrdering>(I->getOperand(7).getImm());
+  int hint;
+  switch (Ordering) {
+  case AtomicOrdering::Acquire:
+  case AtomicOrdering::AcquireRelease:
+  case AtomicOrdering::SequentiallyConsistent:
+    // TODO: acquire
+    hint = 0;
+    break;
+  default:
+    hint = 0x700;
   }
+  MachineBasicBlock::iterator Pos = sinkMBB->begin();
+  BuildMI(*sinkMBB, Pos, DL, TII->get(LoongArch::DBAR)).addImm(hint);
 
   LivePhysRegs LiveRegs;
   computeAndAddLiveIns(LiveRegs, *loop1MBB);
@@ -250,7 +249,7 @@ bool LoongArchExpandPseudo::expandAtomicCmpSwap(MachineBasicBlock &BB,
   unsigned Ptr = I->getOperand(1).getReg();
   unsigned OldVal = I->getOperand(2).getReg();
   unsigned NewVal = I->getOperand(3).getReg();
-  unsigned Scratch = I->getOperand(4).getReg();
+  unsigned Scratch = I->getOperand(5).getReg();
 
   // insert new blocks after the current block
   const BasicBlock *LLVM_BB = BB.getBasicBlock();
@@ -295,10 +294,21 @@ bool LoongArchExpandPseudo::expandAtomicCmpSwap(MachineBasicBlock &BB,
   BuildMI(loop2MBB, DL, TII->get(BEQ))
     .addReg(Scratch, RegState::Kill).addReg(ZERO).addMBB(loop1MBB);
 
-  if (!hasDbar(exitMBB)) {
-    MachineBasicBlock::iterator Pos = exitMBB->begin();
-    BuildMI(*exitMBB, Pos, DL, TII->get(LoongArch::DBAR)).addImm(DBAR_HINT);
+  AtomicOrdering Ordering =
+      static_cast<AtomicOrdering>(I->getOperand(4).getImm());
+  int hint;
+  switch (Ordering) {
+  case AtomicOrdering::Acquire:
+  case AtomicOrdering::AcquireRelease:
+  case AtomicOrdering::SequentiallyConsistent:
+    // TODO: acquire
+    hint = 0;
+    break;
+  default:
+    hint = 0x700;
   }
+  MachineBasicBlock::iterator Pos = exitMBB->begin();
+  BuildMI(*exitMBB, Pos, DL, TII->get(LoongArch::DBAR)).addImm(hint);
 
   LivePhysRegs LiveRegs;
   computeAndAddLiveIns(LiveRegs, *loop1MBB);
@@ -1938,7 +1948,8 @@ bool LoongArchExpandPseudo::expandAtomicBinOp(MachineBasicBlock &BB,
 
   BB.addSuccessor(loopMBB, BranchProbability::getOne());
   loopMBB->addSuccessor(exitMBB);
-  loopMBB->addSuccessor(loopMBB);
+  if (!Opcode && IsNand)
+    loopMBB->addSuccessor(loopMBB);
   loopMBB->normalizeSuccProbs();
 
   assert((OldVal != Ptr) && "Clobbered the wrong ptr reg!");

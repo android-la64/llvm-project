@@ -73,6 +73,8 @@ unsigned long long monotonic_clock_ns() {
 const int kPCInc = 1;
 #elif defined(__sparc__) || defined(__mips__)
 const int kPCInc = 8;
+#elif defined(__loongarch__)
+const int kPCInc = 4;
 #else
 const int kPCInc = 4;
 #endif

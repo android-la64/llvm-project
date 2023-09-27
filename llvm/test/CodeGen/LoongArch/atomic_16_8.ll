@@ -14,7 +14,6 @@ define void @umax_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB0_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -50,7 +49,6 @@ define void @umax_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB1_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -85,7 +83,6 @@ define void @max_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB2_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -121,7 +118,6 @@ define void @max_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB3_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -157,7 +153,6 @@ define void @umin_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB4_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -193,7 +188,6 @@ define void @umin_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB5_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -228,7 +222,6 @@ define void @min_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB6_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -264,7 +257,6 @@ define void @min_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB7_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r14, $r10, $r7
@@ -300,7 +292,6 @@ define void @or_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB8_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    or $r11, $r10, $r5
@@ -332,7 +323,6 @@ define void @or_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB9_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    or $r11, $r10, $r5
@@ -364,7 +354,6 @@ define void @add_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB10_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    add.w $r11, $r10, $r5
@@ -396,7 +385,6 @@ define void @add_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB11_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    add.w $r11, $r10, $r5
@@ -428,7 +416,6 @@ define void @sub_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB12_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    sub.w $r11, $r10, $r5
@@ -460,7 +447,6 @@ define void @sub_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB13_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    sub.w $r11, $r10, $r5
@@ -492,7 +478,6 @@ define void @and_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB14_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r11, $r10, $r5
@@ -524,7 +509,6 @@ define void @and_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB15_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r11, $r10, $r5
@@ -556,7 +540,6 @@ define void @nand_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB16_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r11, $r10, $r5
@@ -589,7 +572,6 @@ define void @nand_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB17_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r11, $r10, $r5
@@ -622,7 +604,6 @@ define void @xor_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB18_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    xor $r11, $r10, $r5
@@ -654,7 +635,6 @@ define void @xor_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB19_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    xor $r11, $r10, $r5
@@ -686,7 +666,6 @@ define void @xchg_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB20_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r11, $r5, $r7
@@ -717,7 +696,6 @@ define void @xchg_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r7, $r7, $r4
 ; CHECK-NEXT:    nor $r8, $zero, $r7
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB21_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r10, $r6, 0
 ; CHECK-NEXT:    and $r11, $r5, $r7
@@ -751,7 +729,6 @@ define void @cmpxchg_8(i8* %ptr) {
 ; CHECK-NEXT:    sll.w $r6, $r6, $r4
 ; CHECK-NEXT:    andi $r5, $r5, 255
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB22_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r11, $r7, 0
 ; CHECK-NEXT:    and $r12, $r11, $r8
@@ -762,7 +739,7 @@ define void @cmpxchg_8(i8* %ptr) {
 ; CHECK-NEXT:    sc.w $r11, $r7, 0
 ; CHECK-NEXT:    beq $r11, $zero, .LBB22_1
 ; CHECK-NEXT:  .LBB22_3:
-; CHECK-NEXT:    dbar 1792
+; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:    srl.w $r10, $r12, $r4
 ; CHECK-NEXT:    ext.w.b $r10, $r10
 ; CHECK-NEXT:  # %bb.4:
@@ -788,7 +765,6 @@ define void @cmpxchg_16(i16* %ptr) {
 ; CHECK-NEXT:    sll.w $r6, $r6, $r4
 ; CHECK-NEXT:    and $r5, $r5, $r8
 ; CHECK-NEXT:    sll.w $r5, $r5, $r4
-; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:  .LBB23_1: # =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ll.w $r11, $r7, 0
 ; CHECK-NEXT:    and $r12, $r11, $r9
@@ -799,7 +775,7 @@ define void @cmpxchg_16(i16* %ptr) {
 ; CHECK-NEXT:    sc.w $r11, $r7, 0
 ; CHECK-NEXT:    beq $r11, $zero, .LBB23_1
 ; CHECK-NEXT:  .LBB23_3:
-; CHECK-NEXT:    dbar 1792
+; CHECK-NEXT:    dbar 0
 ; CHECK-NEXT:    srl.w $r8, $r12, $r4
 ; CHECK-NEXT:    ext.w.h $r8, $r8
 ; CHECK-NEXT:  # %bb.4:

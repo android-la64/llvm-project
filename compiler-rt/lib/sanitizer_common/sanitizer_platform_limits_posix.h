@@ -103,21 +103,24 @@ const unsigned struct_kernel_stat_sz =
         ? FIRST_32_SECOND_64(104, 128)
         : FIRST_32_SECOND_64((_MIPS_SIM == _ABIN32) ? 160 : 144, 216);
 const unsigned struct_kernel_stat64_sz = 104;
-#elif defined(__s390__) && !defined(__s390x__)
+#    elif defined(__loongarch__)
+const unsigned struct_kernel_stat_sz = 128;
+const unsigned struct_kernel_stat64_sz = 128;
+#    elif defined(__s390__) && !defined(__s390x__)
 const unsigned struct_kernel_stat_sz = 64;
 const unsigned struct_kernel_stat64_sz = 104;
-#elif defined(__s390x__)
+#    elif defined(__s390x__)
 const unsigned struct_kernel_stat_sz = 144;
 const unsigned struct_kernel_stat64_sz = 0;
-#elif defined(__sparc__) && defined(__arch64__)
+#    elif defined(__sparc__) && defined(__arch64__)
 const unsigned struct___old_kernel_stat_sz = 0;
 const unsigned struct_kernel_stat_sz = 104;
 const unsigned struct_kernel_stat64_sz = 144;
-#elif defined(__sparc__) && !defined(__arch64__)
+#    elif defined(__sparc__) && !defined(__arch64__)
 const unsigned struct___old_kernel_stat_sz = 0;
 const unsigned struct_kernel_stat_sz = 64;
 const unsigned struct_kernel_stat64_sz = 104;
-#elif SANITIZER_RISCV64
+#    elif SANITIZER_RISCV64
 const unsigned struct_kernel_stat_sz = 128;
 const unsigned struct_kernel_stat64_sz = 0;  // RISCV64 does not use stat64
 #    elif defined(__hexagon__)
@@ -675,11 +678,11 @@ struct __sanitizer_sigaction {
 };
 #endif // !SANITIZER_ANDROID
 
-#if defined(__mips__)
-#define __SANITIZER_KERNEL_NSIG 128
-#else
-#define __SANITIZER_KERNEL_NSIG 64
-#endif
+#  if defined(__mips__) || defined(__loongarch__)
+#    define __SANITIZER_KERNEL_NSIG 128
+#  else
+#    define __SANITIZER_KERNEL_NSIG 64
+#  endif
 
 struct __sanitizer_kernel_sigset_t {
   uptr sig[__SANITIZER_KERNEL_NSIG / (sizeof(uptr) * 8)];
@@ -840,10 +843,10 @@ typedef void __sanitizer_FILE;
 # define SANITIZER_HAS_STRUCT_FILE 0
 #endif
 
-#if SANITIZER_LINUX && !SANITIZER_ANDROID &&                               \
-    (defined(__i386) || defined(__x86_64) || defined(__mips64) ||          \
-     defined(__powerpc64__) || defined(__aarch64__) || defined(__arm__) || \
-     defined(__s390__) || SANITIZER_RISCV64)
+#  if SANITIZER_LINUX && !SANITIZER_ANDROID &&                               \
+      (defined(__i386) || defined(__x86_64) || defined(__mips64) ||          \
+       defined(__powerpc64__) || defined(__aarch64__) || defined(__arm__) || \
+       defined(__s390__) || SANITIZER_RISCV64 || defined(__loongarch64))
 extern unsigned struct_user_regs_struct_sz;
 extern unsigned struct_user_fpregs_struct_sz;
 extern unsigned struct_user_fpxregs_struct_sz;

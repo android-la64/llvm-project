@@ -167,6 +167,8 @@
 #    define ASAN_SHADOW_OFFSET_DYNAMIC
 #  elif defined(__mips__)
 #    define ASAN_SHADOW_OFFSET_CONST 0x0aaa0000
+#  elif defined(__loongarch__)
+#    define ASAN_SHADOW_OFFSET_CONST 0x0aaa0000
 #  elif SANITIZER_FREEBSD
 #    define ASAN_SHADOW_OFFSET_CONST 0x40000000
 #  elif SANITIZER_NETBSD
@@ -200,6 +202,8 @@
 #  elif SANITIZER_APPLE
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000100000000000
 #  elif defined(__mips64)
+#    define ASAN_SHADOW_OFFSET_CONST 0x0000002000000000
+#  elif defined(__loongarch64)
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000002000000000
 #  elif defined(__sparc__)
 #    define ASAN_SHADOW_OFFSET_CONST 0x0000080000000000

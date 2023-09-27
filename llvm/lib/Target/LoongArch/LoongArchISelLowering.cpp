@@ -3619,13 +3619,28 @@ LoongArchTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case LoongArch::ATOMIC_LOAD_UMIN_I64:
     return emitAtomicBinary(MI, BB);
 
-  case LoongArch::ATOMIC_CMP_SWAP_I8:
+  case LoongArch::I8_ATOMIC_CMP_SWAP_ACQUIRE:
+  case LoongArch::I8_ATOMIC_CMP_SWAP_ACQ_REL:
+  case LoongArch::I8_ATOMIC_CMP_SWAP_MONOTONIC:
+  case LoongArch::I8_ATOMIC_CMP_SWAP_RELEASE:
+  case LoongArch::I8_ATOMIC_CMP_SWAP_SEQ_CST:
     return emitAtomicCmpSwapPartword(MI, BB, 1);
-  case LoongArch::ATOMIC_CMP_SWAP_I16:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_ACQUIRE:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_ACQ_REL:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_MONOTONIC:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_RELEASE:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_SEQ_CST:
     return emitAtomicCmpSwapPartword(MI, BB, 2);
-  case LoongArch::ATOMIC_CMP_SWAP_I32:
-    return emitAtomicCmpSwap(MI, BB);
-  case LoongArch::ATOMIC_CMP_SWAP_I64:
+  case LoongArch::I32_ATOMIC_CMP_SWAP_ACQUIRE:
+  case LoongArch::I32_ATOMIC_CMP_SWAP_ACQ_REL:
+  case LoongArch::I32_ATOMIC_CMP_SWAP_MONOTONIC:
+  case LoongArch::I32_ATOMIC_CMP_SWAP_RELEASE:
+  case LoongArch::I32_ATOMIC_CMP_SWAP_SEQ_CST:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_ACQUIRE:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_ACQ_REL:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_MONOTONIC:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_RELEASE:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_SEQ_CST:
     return emitAtomicCmpSwap(MI, BB);
 
   case LoongArch::PseudoSELECT_I:
@@ -4024,11 +4039,6 @@ LoongArchTargetLowering::emitAtomicBinary(MachineInstr &MI,
       .addReg(Scratch, RegState::Define | RegState::EarlyClobber |
                            RegState::Implicit | RegState::Dead);
 
-  if(MI.getOpcode() == LoongArch::ATOMIC_LOAD_NAND_I32
-     || MI.getOpcode() == LoongArch::ATOMIC_LOAD_NAND_I64){
-    BuildMI(*BB, II, DL, TII->get(LoongArch::DBAR)).addImm(DBAR_HINT);
-  }
-
   MI.eraseFromParent();
 
   return BB;
@@ -4220,7 +4230,6 @@ MachineBasicBlock *LoongArchTargetLowering::emitAtomicBinaryPartword(
   // emitAtomicBinary. In summary, we need a scratch register which is going to
   // be undef, that is unique among registers chosen for the instruction.
 
-  BuildMI(BB, DL, TII->get(LoongArch::DBAR)).addImm(0);
   BuildMI(BB, DL, TII->get(AtomicOp))
       .addReg(Dest, RegState::Define | RegState::EarlyClobber)
       .addReg(AlignedAddr)
@@ -4252,11 +4261,26 @@ MachineBasicBlock *LoongArchTargetLowering::emitAtomicBinaryPartword(
 MachineBasicBlock *
 LoongArchTargetLowering::emitAtomicCmpSwap(MachineInstr &MI,
                                       MachineBasicBlock *BB) const {
-  assert((MI.getOpcode() == LoongArch::ATOMIC_CMP_SWAP_I32 ||
-          MI.getOpcode() == LoongArch::ATOMIC_CMP_SWAP_I64) &&
+  unsigned Op = MI.getOpcode();
+  assert((Op == LoongArch::I32_ATOMIC_CMP_SWAP_ACQUIRE ||
+          Op == LoongArch::I32_ATOMIC_CMP_SWAP_ACQ_REL ||
+          Op == LoongArch::I32_ATOMIC_CMP_SWAP_MONOTONIC ||
+          Op == LoongArch::I32_ATOMIC_CMP_SWAP_RELEASE ||
+          Op == LoongArch::I32_ATOMIC_CMP_SWAP_SEQ_CST ||
+          Op == LoongArch::I64_ATOMIC_CMP_SWAP_ACQUIRE ||
+          Op == LoongArch::I64_ATOMIC_CMP_SWAP_ACQ_REL ||
+          Op == LoongArch::I64_ATOMIC_CMP_SWAP_MONOTONIC ||
+          Op == LoongArch::I64_ATOMIC_CMP_SWAP_RELEASE ||
+          Op == LoongArch::I64_ATOMIC_CMP_SWAP_SEQ_CST) &&
          "Unsupported atomic psseudo for EmitAtomicCmpSwap.");
 
-  const unsigned Size = MI.getOpcode() == LoongArch::ATOMIC_CMP_SWAP_I32 ? 4 : 8;
+  const unsigned Size = (Op == LoongArch::I32_ATOMIC_CMP_SWAP_ACQUIRE ||
+                         Op == LoongArch::I32_ATOMIC_CMP_SWAP_ACQ_REL ||
+                         Op == LoongArch::I32_ATOMIC_CMP_SWAP_MONOTONIC ||
+                         Op == LoongArch::I32_ATOMIC_CMP_SWAP_RELEASE ||
+                         Op == LoongArch::I32_ATOMIC_CMP_SWAP_SEQ_CST)
+                            ? 4
+                            : 8;
 
   MachineFunction *MF = BB->getParent();
   MachineRegisterInfo &MRI = MF->getRegInfo();
@@ -4264,9 +4288,8 @@ LoongArchTargetLowering::emitAtomicCmpSwap(MachineInstr &MI,
   const TargetInstrInfo *TII = Subtarget.getInstrInfo();
   DebugLoc DL = MI.getDebugLoc();
 
-  unsigned AtomicOp = MI.getOpcode() == LoongArch::ATOMIC_CMP_SWAP_I32
-                          ? LoongArch::ATOMIC_CMP_SWAP_I32_POSTRA
-                          : LoongArch::ATOMIC_CMP_SWAP_I64_POSTRA;
+  unsigned AtomicOp = Size == 4 ? LoongArch::ATOMIC_CMP_SWAP_I32_POSTRA
+                                : LoongArch::ATOMIC_CMP_SWAP_I64_POSTRA;
   unsigned Dest = MI.getOperand(0).getReg();
   unsigned Ptr = MI.getOperand(1).getReg();
   unsigned OldVal = MI.getOperand(2).getReg();
@@ -4288,20 +4311,42 @@ LoongArchTargetLowering::emitAtomicCmpSwap(MachineInstr &MI,
   BuildMI(*BB, II, DL, TII->get(LoongArch::COPY), OldValCopy).addReg(OldVal);
   BuildMI(*BB, II, DL, TII->get(LoongArch::COPY), NewValCopy).addReg(NewVal);
 
+  AtomicOrdering Ordering;
+  switch (Op) {
+  case LoongArch::I32_ATOMIC_CMP_SWAP_ACQUIRE:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_ACQUIRE:
+    Ordering = AtomicOrdering::Acquire;
+    break;
+  case LoongArch::I32_ATOMIC_CMP_SWAP_ACQ_REL:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_ACQ_REL:
+    Ordering = AtomicOrdering::AcquireRelease;
+    break;
+  case LoongArch::I32_ATOMIC_CMP_SWAP_SEQ_CST:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_SEQ_CST:
+    Ordering = AtomicOrdering::SequentiallyConsistent;
+    break;
+  case LoongArch::I32_ATOMIC_CMP_SWAP_RELEASE:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_RELEASE:
+    Ordering = AtomicOrdering::Release;
+    break;
+  case LoongArch::I32_ATOMIC_CMP_SWAP_MONOTONIC:
+  case LoongArch::I64_ATOMIC_CMP_SWAP_MONOTONIC:
+    Ordering = AtomicOrdering::Monotonic;
+    break;
+  }
+
   // The purposes of the flags on the scratch registers is explained in
   // emitAtomicBinary. In summary, we need a scratch register which is going to
   // be undef, that is unique among registers chosen for the instruction.
 
-  BuildMI(*BB, II, DL, TII->get(LoongArch::DBAR)).addImm(0);
   BuildMI(*BB, II, DL, TII->get(AtomicOp))
       .addReg(Dest, RegState::Define | RegState::EarlyClobber)
       .addReg(PtrCopy, RegState::Kill)
       .addReg(OldValCopy, RegState::Kill)
       .addReg(NewValCopy, RegState::Kill)
+      .addImm(static_cast<int>(Ordering))
       .addReg(Scratch, RegState::EarlyClobber | RegState::Define |
                            RegState::Dead | RegState::Implicit);
-
-  BuildMI(*BB, II, DL, TII->get(LoongArch::DBAR)).addImm(DBAR_HINT);
 
   MI.eraseFromParent(); // The instruction is gone now.
 
@@ -4312,6 +4357,18 @@ MachineBasicBlock *LoongArchTargetLowering::emitAtomicCmpSwapPartword(
     MachineInstr &MI, MachineBasicBlock *BB, unsigned Size) const {
   assert((Size == 1 || Size == 2) &&
       "Unsupported size for EmitAtomicCmpSwapPartial.");
+  unsigned Op = MI.getOpcode();
+  assert((Op == LoongArch::I8_ATOMIC_CMP_SWAP_ACQUIRE ||
+          Op == LoongArch::I8_ATOMIC_CMP_SWAP_ACQ_REL ||
+          Op == LoongArch::I8_ATOMIC_CMP_SWAP_MONOTONIC ||
+          Op == LoongArch::I8_ATOMIC_CMP_SWAP_RELEASE ||
+          Op == LoongArch::I8_ATOMIC_CMP_SWAP_SEQ_CST ||
+          Op == LoongArch::I16_ATOMIC_CMP_SWAP_ACQUIRE ||
+          Op == LoongArch::I16_ATOMIC_CMP_SWAP_ACQ_REL ||
+          Op == LoongArch::I16_ATOMIC_CMP_SWAP_MONOTONIC ||
+          Op == LoongArch::I16_ATOMIC_CMP_SWAP_RELEASE ||
+          Op == LoongArch::I16_ATOMIC_CMP_SWAP_SEQ_CST) &&
+         "Unsupported atomic psseudo for EmitAtomicCmpSwapPartword.");
 
   MachineFunction *MF = BB->getParent();
   MachineRegisterInfo &RegInfo = MF->getRegInfo();
@@ -4340,9 +4397,8 @@ MachineBasicBlock *LoongArchTargetLowering::emitAtomicCmpSwapPartword(
   unsigned Mask3 = RegInfo.createVirtualRegister(RC);
   unsigned MaskedCmpVal = RegInfo.createVirtualRegister(RC);
   unsigned MaskedNewVal = RegInfo.createVirtualRegister(RC);
-  unsigned AtomicOp = MI.getOpcode() == LoongArch::ATOMIC_CMP_SWAP_I8
-                          ? LoongArch::ATOMIC_CMP_SWAP_I8_POSTRA
-                          : LoongArch::ATOMIC_CMP_SWAP_I16_POSTRA;
+  unsigned AtomicOp = Size == 1 ? LoongArch::ATOMIC_CMP_SWAP_I8_POSTRA
+                                : LoongArch::ATOMIC_CMP_SWAP_I16_POSTRA;
 
   // The scratch registers here with the EarlyClobber | Define | Dead | Implicit
   // flags are used to coerce the register allocator and the machine verifier to
@@ -4427,11 +4483,33 @@ MachineBasicBlock *LoongArchTargetLowering::emitAtomicCmpSwapPartword(
   BuildMI(BB, DL, TII->get(LoongArch::SLL_W), ShiftedNewVal)
     .addReg(MaskedNewVal).addReg(ShiftAmt);
 
+  AtomicOrdering Ordering;
+  switch (Op) {
+  case LoongArch::I8_ATOMIC_CMP_SWAP_ACQUIRE:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_ACQUIRE:
+    Ordering = AtomicOrdering::Acquire;
+    break;
+  case LoongArch::I8_ATOMIC_CMP_SWAP_ACQ_REL:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_ACQ_REL:
+    Ordering = AtomicOrdering::AcquireRelease;
+    break;
+  case LoongArch::I8_ATOMIC_CMP_SWAP_SEQ_CST:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_SEQ_CST:
+    Ordering = AtomicOrdering::SequentiallyConsistent;
+    break;
+  case LoongArch::I8_ATOMIC_CMP_SWAP_RELEASE:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_RELEASE:
+    Ordering = AtomicOrdering::Release;
+    break;
+  case LoongArch::I8_ATOMIC_CMP_SWAP_MONOTONIC:
+  case LoongArch::I16_ATOMIC_CMP_SWAP_MONOTONIC:
+    Ordering = AtomicOrdering::Monotonic;
+    break;
+  }
   // The purposes of the flags on the scratch registers are explained in
   // emitAtomicBinary. In summary, we need a scratch register which is going to
   // be undef, that is unique among the register chosen for the instruction.
 
-  BuildMI(BB, DL, TII->get(LoongArch::DBAR)).addImm(0);
   BuildMI(BB, DL, TII->get(AtomicOp))
       .addReg(Dest, RegState::Define | RegState::EarlyClobber)
       .addReg(AlignedAddr)
@@ -4440,6 +4518,7 @@ MachineBasicBlock *LoongArchTargetLowering::emitAtomicCmpSwapPartword(
       .addReg(Mask2)
       .addReg(ShiftedNewVal)
       .addReg(ShiftAmt)
+      .addImm(static_cast<int>(Ordering))
       .addReg(Scratch, RegState::EarlyClobber | RegState::Define |
                            RegState::Dead | RegState::Implicit)
       .addReg(Scratch2, RegState::EarlyClobber | RegState::Define |

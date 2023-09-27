@@ -16,45 +16,48 @@
 #if SANITIZER_LINUX &&                                                   \
     (defined(__x86_64__) || defined(__mips__) || defined(__aarch64__) || \
      defined(__powerpc64__) || defined(__s390__) || defined(__i386__) || \
-     defined(__arm__) || SANITIZER_RISCV64)
+     defined(__arm__) || SANITIZER_RISCV64 || defined(__loongarch__))
 
-#include "sanitizer_stoptheworld.h"
+#  include "sanitizer_atomic.h"
+#  include "sanitizer_platform_limits_posix.h"
+#  include "sanitizer_stoptheworld.h"
 
-#include "sanitizer_platform_limits_posix.h"
-#include "sanitizer_atomic.h"
+#  if defined(__loongarch__)
+#    include <sys/ucontext.h>
+#  endif
 
-#include <errno.h>
-#include <sched.h> // for CLONE_* definitions
-#include <stddef.h>
-#include <sys/prctl.h> // for PR_* definitions
-#include <sys/ptrace.h> // for PTRACE_* definitions
-#include <sys/types.h> // for pid_t
-#include <sys/uio.h> // for iovec
-#include <elf.h> // for NT_PRSTATUS
-#if (defined(__aarch64__) || SANITIZER_RISCV64) && !SANITIZER_ANDROID
+#  include <elf.h>  // for NT_PRSTATUS
+#  include <errno.h>
+#  include <sched.h>  // for CLONE_* definitions
+#  include <stddef.h>
+#  include <sys/prctl.h>   // for PR_* definitions
+#  include <sys/ptrace.h>  // for PTRACE_* definitions
+#  include <sys/types.h>   // for pid_t
+#  include <sys/uio.h>     // for iovec
+#  if (defined(__aarch64__) || SANITIZER_RISCV64) && !SANITIZER_ANDROID
 // GLIBC 2.20+ sys/user does not include asm/ptrace.h
 # include <asm/ptrace.h>
 #endif
 #include <sys/user.h>  // for user_regs_struct
-#if SANITIZER_ANDROID && SANITIZER_MIPS
-# include <asm/reg.h>  // for mips SP register in sys/user.h
-#endif
-#include <sys/wait.h> // for signal-related stuff
+#  if (SANITIZER_ANDROID && SANITIZER_MIPS) || SANITIZER_LOONGARCH
+#    include <asm/reg.h>  // for mips SP register in sys/user.h
+#  endif
+#  include <sys/wait.h>  // for signal-related stuff
 
-#ifdef sa_handler
-# undef sa_handler
-#endif
+#  ifdef sa_handler
+#    undef sa_handler
+#  endif
 
-#ifdef sa_sigaction
-# undef sa_sigaction
-#endif
+#  ifdef sa_sigaction
+#    undef sa_sigaction
+#  endif
 
-#include "sanitizer_common.h"
-#include "sanitizer_flags.h"
-#include "sanitizer_libc.h"
-#include "sanitizer_linux.h"
-#include "sanitizer_mutex.h"
-#include "sanitizer_placement_new.h"
+#  include "sanitizer_common.h"
+#  include "sanitizer_flags.h"
+#  include "sanitizer_libc.h"
+#  include "sanitizer_linux.h"
+#  include "sanitizer_mutex.h"
+#  include "sanitizer_placement_new.h"
 
 // Sufficiently old kernel headers don't provide this value, but we can still
 // call prctl with it. If the runtime kernel is new enough, the prctl call will
@@ -508,29 +511,38 @@ typedef struct user regs_struct;
 #  define REG_SP regs[EF_REG29]
 # endif
 
-#elif defined(__aarch64__)
-typedef struct user_pt_regs regs_struct;
-#define REG_SP sp
+#  elif defined(__loongarch__)
+typedef struct user_regs_struct regs_struct;
 static constexpr uptr kExtraRegs[] = {0};
-#define ARCH_IOVEC_FOR_GETREGSET
+#    define ARCH_IOVEC_FOR_GETREGSET
 
-#elif SANITIZER_RISCV64
+#    if SANITIZER_LOONGARCH
+#      define REG_SP gpr[3]
+#    endif
+
+#  elif defined(__aarch64__)
+typedef struct user_pt_regs regs_struct;
+#    define REG_SP sp
+static constexpr uptr kExtraRegs[] = {0};
+#    define ARCH_IOVEC_FOR_GETREGSET
+
+#  elif SANITIZER_RISCV64
 typedef struct user_regs_struct regs_struct;
 // sys/ucontext.h already defines REG_SP as 2. Undefine it first.
-#undef REG_SP
-#define REG_SP sp
+#    undef REG_SP
+#    define REG_SP sp
 static constexpr uptr kExtraRegs[] = {0};
-#define ARCH_IOVEC_FOR_GETREGSET
+#    define ARCH_IOVEC_FOR_GETREGSET
 
-#elif defined(__s390__)
+#  elif defined(__s390__)
 typedef _user_regs_struct regs_struct;
-#define REG_SP gprs[15]
+#    define REG_SP gprs[15]
 static constexpr uptr kExtraRegs[] = {0};
-#define ARCH_IOVEC_FOR_GETREGSET
+#    define ARCH_IOVEC_FOR_GETREGSET
 
-#else
-#error "Unsupported architecture"
-#endif // SANITIZER_ANDROID && defined(__arm__)
+#  else
+#    error "Unsupported architecture"
+#  endif  // SANITIZER_ANDROID && defined(__arm__)
 
 tid_t SuspendedThreadsListLinux::GetThreadID(uptr index) const {
   CHECK_LT(index, thread_ids_.size());

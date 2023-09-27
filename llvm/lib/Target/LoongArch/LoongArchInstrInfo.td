@@ -1032,15 +1032,73 @@ class AtomicCmpSwap<PatFrag Op, RegisterClass DRC> :
   LoongArchPseudo<(outs DRC:$dst), (ins PtrRC:$ptr, DRC:$cmp, DRC:$swap),
            [(set DRC:$dst, (Op iPTR:$ptr, DRC:$cmp, DRC:$swap))]>;
 
+// These atomic cmpxchg PatFrags only care about the failure ordering.
+// In llvm <= 13, the PatFrags defined by multiclass `ternary_atomic_op_ord`
+// in TargetSelectionDAG.td only care about the success ordering while llvm > 13
+// care about the `merged` ordering which is the stronger one of success and
+// failure. See https://reviews.llvm.org/D106729. But for LoongArch LL-SC we
+// only need to care about the failure ordering as explained in
+// https://github.com/llvm/llvm-project/pull/67391. So we defined these
+// PatFrags.
+multiclass ternary_atomic_op_failure_ord {
+  def NAME#_failure_monotonic : PatFrag<(ops node:$ptr, node:$cmp, node:$val),
+      (!cast<SDPatternOperator>(NAME) node:$ptr, node:$cmp, node:$val), [{
+    AtomicOrdering Ordering = cast<AtomicSDNode>(N)->getFailureOrdering();
+    return Ordering == AtomicOrdering::Monotonic;
+  }]>;
+  def NAME#_failure_acquire : PatFrag<(ops node:$ptr, node:$cmp, node:$val),
+      (!cast<SDPatternOperator>(NAME) node:$ptr, node:$cmp, node:$val), [{
+    AtomicOrdering Ordering = cast<AtomicSDNode>(N)->getFailureOrdering();
+    return Ordering == AtomicOrdering::Acquire;
+  }]>;
+  def NAME#_failure_release : PatFrag<(ops node:$ptr, node:$cmp, node:$val),
+      (!cast<SDPatternOperator>(NAME) node:$ptr, node:$cmp, node:$val), [{
+    AtomicOrdering Ordering = cast<AtomicSDNode>(N)->getFailureOrdering();
+    return Ordering == AtomicOrdering::Release;
+  }]>;
+  def NAME#_failure_acq_rel : PatFrag<(ops node:$ptr, node:$cmp, node:$val),
+      (!cast<SDPatternOperator>(NAME) node:$ptr, node:$cmp, node:$val), [{
+    AtomicOrdering Ordering = cast<AtomicSDNode>(N)->getFailureOrdering();
+    return Ordering == AtomicOrdering::AcquireRelease;
+  }]>;
+  def NAME#_failure_seq_cst : PatFrag<(ops node:$ptr, node:$cmp, node:$val),
+      (!cast<SDPatternOperator>(NAME) node:$ptr, node:$cmp, node:$val), [{
+    AtomicOrdering Ordering = cast<AtomicSDNode>(N)->getFailureOrdering();
+    return Ordering == AtomicOrdering::SequentiallyConsistent;
+  }]>;
+}
+
+defm atomic_cmp_swap_64 : ternary_atomic_op_failure_ord;
+
+multiclass AtomicCmpSwapInstrs<string Bits, RegisterClass RC> {
+  def ATOMIC_CMP_SWAP_MONOTONIC :
+    AtomicCmpSwap<!cast<PatFrag>("atomic_cmp_swap_"#Bits#"_failure_monotonic"),
+                  RC>;
+  def ATOMIC_CMP_SWAP_ACQUIRE   :
+    AtomicCmpSwap<!cast<PatFrag>("atomic_cmp_swap_"#Bits#"_failure_acquire"),
+                  RC>;
+  def ATOMIC_CMP_SWAP_RELEASE   :
+    AtomicCmpSwap<!cast<PatFrag>("atomic_cmp_swap_"#Bits#"_failure_release"),
+                  RC>;
+  def ATOMIC_CMP_SWAP_ACQ_REL   :
+    AtomicCmpSwap<!cast<PatFrag>("atomic_cmp_swap_"#Bits#"_failure_acq_rel"),
+                  RC>;
+  def ATOMIC_CMP_SWAP_SEQ_CST   :
+    AtomicCmpSwap<!cast<PatFrag>("atomic_cmp_swap_"#Bits#"_failure_seq_cst"),
+                  RC>;
+}
+
 class AtomicCmpSwapPostRA<RegisterClass RC> :
-  LoongArchPseudo<(outs RC:$dst), (ins PtrRC:$ptr, RC:$cmp, RC:$swap), []> {
+  LoongArchPseudo<(outs RC:$dst),
+                  (ins PtrRC:$ptr, RC:$cmp, RC:$swap, i32imm:$ordering), []> {
   let mayLoad = 1;
   let mayStore = 1;
 }
 
 class AtomicCmpSwapSubwordPostRA<RegisterClass RC> :
-  LoongArchPseudo<(outs RC:$dst), (ins PtrRC:$ptr, RC:$mask, RC:$ShiftCmpVal,
-                                RC:$mask2, RC:$ShiftNewVal, RC:$ShiftAmt), []> {
+  LoongArchPseudo<(outs RC:$dst),
+                  (ins PtrRC:$ptr, RC:$mask, RC:$ShiftCmpVal, RC:$mask2,
+                       RC:$ShiftNewVal, RC:$ShiftAmt, i32imm:$ordering), []> {
   let mayLoad = 1;
   let mayStore = 1;
 }
@@ -1450,7 +1508,8 @@ let usesCustomInserter = 1 in {
   def ATOMIC_LOAD_XOR_I64  : Atomic2Ops<atomic_load_xor_64, GPR64>;
   def ATOMIC_LOAD_NAND_I64 : Atomic2Ops<atomic_load_nand_64, GPR64>;
   def ATOMIC_SWAP_I64      : Atomic2Ops<atomic_swap_64, GPR64>;
-  def ATOMIC_CMP_SWAP_I64  : AtomicCmpSwap<atomic_cmp_swap_64, GPR64>;
+
+  defm I64_  : AtomicCmpSwapInstrs<"64", GPR64>;
 
   def ATOMIC_LOAD_MAX_I64  : Atomic2Ops<atomic_load_max_64, GPR64>;
   def ATOMIC_LOAD_MIN_I64  : Atomic2Ops<atomic_load_min_64, GPR64>;

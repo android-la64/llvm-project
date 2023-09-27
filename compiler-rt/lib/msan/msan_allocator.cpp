@@ -44,7 +44,7 @@ struct MsanMapUnmapCallback {
   }
 };
 
-#if defined(__mips64)
+#if defined(__mips64) || defined(__loongarch64)
 static const uptr kMaxAllowedMallocSize = 2UL << 30;
 
 struct AP32 {

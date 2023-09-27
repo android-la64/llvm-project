@@ -31,6 +31,10 @@ extern "C" void *registers_thread_func(void *arg) {
   asm("move $16, %0"
       :
       : "r"(p));
+#elif defined(__loongarch__)
+  asm("move $r23, %0"
+      :
+      : "r"(p));
 #elif defined(__arm__)
   asm("mov r5, %0"
       :

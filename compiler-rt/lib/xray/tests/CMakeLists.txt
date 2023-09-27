@@ -66,6 +66,7 @@ if (NOT APPLE)
       ${LLVM_TESTINGSUPPORT_LDFLAGS} XRAY_UNITTEST_LINK_FLAGS)
     append_list_if(COMPILER_RT_HAS_LLVMTESTINGSUPPORT
       ${LLVM_TESTINGSUPPORT_LIBLIST} XRAY_UNITTEST_LINK_FLAGS)
+    list(APPEND XRAY_UNITTEST_LINK_FLAGS -lLLVMXRay -lLLVMSupport -lLLVMDemangle -lLLVMTestingSupport)
   else()
     # We add the library directories one at a time in our CFLAGS.
     foreach (DIR ${LLVM_LIBRARY_DIR})

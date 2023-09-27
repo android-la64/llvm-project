@@ -3161,13 +3161,15 @@ static void GetPathToLoadable(char *buf, size_t sz) {
   static const char basename[] = "libmsan_loadable.mips64.so";
 #elif defined(__mips64)
   static const char basename[] = "libmsan_loadable.mips64el.so";
-#elif defined(__aarch64__)
+#  elif defined(__loongarch64)
+  static const char basename[] = "libmsan_loadable.loongarch64.so";
+#  elif defined(__aarch64__)
   static const char basename[] = "libmsan_loadable.aarch64.so";
-#elif defined(__powerpc64__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#  elif defined(__powerpc64__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
   static const char basename[] = "libmsan_loadable.powerpc64.so";
-#elif defined(__powerpc64__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#  elif defined(__powerpc64__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   static const char basename[] = "libmsan_loadable.powerpc64le.so";
-#endif
+#  endif
   int res = snprintf(buf, sz, "%.*s/%s",
                      (int)dir_len, program_path, basename);
   ASSERT_GE(res, 0);

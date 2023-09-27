@@ -517,7 +517,7 @@ static void StartBackgroundThread() {
   ctx->background_thread = internal_start_thread(&BackgroundThread, 0);
 }
 
-#ifndef __mips__
+#  if !(defined(__mips__) || defined(__loongarch__))
 static void StopBackgroundThread() {
   atomic_store(&ctx->stop_background_thread, 1, memory_order_relaxed);
   internal_join_thread(ctx->background_thread);
@@ -751,7 +751,7 @@ void MaybeSpawnBackgroundThread() {
   // On MIPS, TSan initialization is run before
   // __pthread_initialize_minimal_internal() is finished, so we can not spawn
   // new threads.
-#if !SANITIZER_GO && !defined(__mips__)
+#if !SANITIZER_GO && !(defined(__mips__) || defined(__loongarch__))
   static atomic_uint32_t bg_thread = {};
   if (atomic_load(&bg_thread, memory_order_relaxed) == 0 &&
       atomic_exchange(&bg_thread, 1, memory_order_relaxed) == 0) {

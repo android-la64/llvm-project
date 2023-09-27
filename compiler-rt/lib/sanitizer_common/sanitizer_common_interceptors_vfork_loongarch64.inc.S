@@ -44,7 +44,7 @@ ASM_WRAPPER_NAME(vfork):
         // $a0 != 0 => parent process. Clear stack shadow.
         // put old $sp to $a0
         addi.d    $a0, $sp, 16
-        bl        %plt(COMMON_INTERCEPTOR_HANDLE_VFORK)
+        bl        COMMON_INTERCEPTOR_HANDLE_VFORK
 
 .L_exit:
         // Restore $ra

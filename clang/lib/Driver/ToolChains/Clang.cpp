@@ -2131,6 +2131,15 @@ void Clang::AddMIPSTargetArgs(const ArgList &Args,
       CmdArgs.push_back("-mips-jalr-reloc=0");
     }
   }
+
+  if (Arg *A = Args.getLastArg(options::OPT_mfix_loongson3_llsc,
+                               options::OPT_mno_fix_loongson3_llsc)) {
+    CmdArgs.push_back("-mllvm");
+    if (A->getOption().matches(options::OPT_mfix_loongson3_llsc))
+      CmdArgs.push_back("-mips-fix-loongson3-llsc=1");
+    else
+      CmdArgs.push_back("-mips-fix-loongson3-llsc=0");
+  }
 }
 
 void Clang::AddPPCTargetArgs(const ArgList &Args,

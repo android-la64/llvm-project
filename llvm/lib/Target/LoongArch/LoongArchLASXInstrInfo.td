@@ -4734,212 +4734,7 @@ def : LASXPat<(srl
 
 
 
-def : LASXPat<(sra
-              (v32i8 (add
-                      (v32i8 (add (v32i8 (
-                      build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                   (i32 1),(i32 1),(i32 1),(i32 1),
-                                   (i32 1),(i32 1),(i32 1),(i32 1),
-                                   (i32 1),(i32 1),(i32 1),(i32 1),
-                                   (i32 1),(i32 1),(i32 1),(i32 1),
-                                   (i32 1),(i32 1),(i32 1),(i32 1),
-                                   (i32 1),(i32 1),(i32 1),(i32 1),
-                                   (i32 1),(i32 1),(i32 1),(i32 1)
-                      )),
-                      (v32i8 (add LASX256B:$a, LASX256B:$b))
-                      )),
-                      (v32i8 (srl
-                             (v32i8 ( add (v32i8(
-                               build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                            (i32 1),(i32 1),(i32 1),(i32 1),
-                                            (i32 1),(i32 1),(i32 1),(i32 1),
-                                            (i32 1),(i32 1),(i32 1),(i32 1),
-                                            (i32 1),(i32 1),(i32 1),(i32 1),
-                                            (i32 1),(i32 1),(i32 1),(i32 1),
-                                            (i32 1),(i32 1),(i32 1),(i32 1),
-                                            (i32 1),(i32 1),(i32 1),(i32 1)
-                             )),
-                             (v32i8 (add LASX256B:$a, LASX256B:$b))
-                             )),
-                             (v32i8 (build_vector (i32 7),(i32 7),(i32 7),(i32 7),
-                                                  (i32 7),(i32 7),(i32 7),(i32 7),
-                                                  (i32 7),(i32 7),(i32 7),(i32 7),
-                                                  (i32 7),(i32 7),(i32 7),(i32 7),
-                                                  (i32 7),(i32 7),(i32 7),(i32 7),
-                                                  (i32 7),(i32 7),(i32 7),(i32 7),
-                                                  (i32 7),(i32 7),(i32 7),(i32 7),
-                                                  (i32 7),(i32 7),(i32 7),(i32 7))
-                             )
-                         )
-                   )
-                   )
-              ),
-            (v32i8 (build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1)
-            ))),
-            (XVAVGR_B  (v32i8 LASX256B:$a), (v32i8 LASX256B:$b))>;
 
-
-def : LASXPat<(sra
-              (v16i16 (add
-                      (v16i16 (add (v16i16 (
-                         build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                      (i32 1),(i32 1),(i32 1),(i32 1),
-                                      (i32 1),(i32 1),(i32 1),(i32 1),
-                                      (i32 1),(i32 1),(i32 1),(i32 1)
-                      )),
-                      (v16i16 (add LASX256H:$a, LASX256H:$b))
-                      )),
-                      (v16i16 (srl
-                         (v16i16 (add (v16i16 (
-                            build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                         (i32 1),(i32 1),(i32 1),(i32 1),
-                                         (i32 1),(i32 1),(i32 1),(i32 1),
-                                         (i32 1),(i32 1),(i32 1),(i32 1)
-                         )),
-                         (v16i16 (add LASX256H:$a, LASX256H:$b))
-                         )),
-                             (v16i16 (build_vector
-                                  (i32 15),(i32 15),(i32 15),(i32 15),
-                                  (i32 15),(i32 15),(i32 15),(i32 15),
-                                  (i32 15),(i32 15),(i32 15),(i32 15),
-                                  (i32 15),(i32 15),(i32 15),(i32 15))
-                             )
-                         )
-                   )
-                   )
-              ),
-            (v16i16 (build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                  (i32 1),(i32 1),(i32 1),(i32 1),
-                                  (i32 1),(i32 1),(i32 1),(i32 1),
-                                  (i32 1),(i32 1),(i32 1),(i32 1)
-            ))),
-            (XVAVGR_H  (v16i16 LASX256H:$a), (v16i16 LASX256H:$b))>;
-
-
-def : LASXPat<(sra
-              (v8i32 (add
-                        (v8i32 (add (v8i32 (
-                           build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                        (i32 1),(i32 1),(i32 1),(i32 1)
-                        )),
-                        (v8i32 (add LASX256W:$a, LASX256W:$b))
-                        )),
-                      (v8i32 (srl
-                          (v8i32 (add (v8i32 (
-                             build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                          (i32 1),(i32 1),(i32 1),(i32 1)
-                          )),
-                          (v8i32 (add LASX256W:$a, LASX256W:$b))
-                          )),
-                             (v8i32 (build_vector
-                                     (i32 31),(i32 31),(i32 31),(i32 31),
-                                     (i32 31),(i32 31),(i32 31),(i32 31)
-                                     )
-                             )
-                         )
-                   )
-                   )
-              ),
-            (v8i32 (build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                 (i32 1),(i32 1),(i32 1),(i32 1)))),
-            (XVAVGR_W  (v8i32 LASX256W:$a), (v8i32 LASX256W:$b))>;
-
-def : LASXPat<(sra
-              (v4i64 (add
-                         (v4i64 (add (v4i64 (
-                            build_vector (i64 1),(i64 1),(i64 1),(i64 1)
-                         )),
-                         (v4i64 (add LASX256D:$a, LASX256D:$b))
-                         )),
-                      (v4i64 (srl
-                         (v4i64 (add (v4i64 (
-                            build_vector (i64 1),(i64 1),(i64 1),(i64 1)
-                         )),
-                         (v4i64 (add LASX256D:$a, LASX256D:$b))
-                         )),
-                                (v4i64 (build_vector
-                                    (i64 63),(i64 63),(i64 63),(i64 63)))
-                                )
-                          )
-                          )
-                  ),
-              (v4i64 (build_vector (i64 1),(i64 1),(i64 1),(i64 1)))),
-              (XVAVGR_D  (v4i64 LASX256D:$a), (v4i64 LASX256D:$b))>;
-
-
-
-def : LASXPat<(srl
-                (v32i8 (add (v32i8 (
-                build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                             (i32 1),(i32 1),(i32 1),(i32 1),
-                             (i32 1),(i32 1),(i32 1),(i32 1),
-                             (i32 1),(i32 1),(i32 1),(i32 1),
-                             (i32 1),(i32 1),(i32 1),(i32 1),
-                             (i32 1),(i32 1),(i32 1),(i32 1),
-                             (i32 1),(i32 1),(i32 1),(i32 1),
-                             (i32 1),(i32 1),(i32 1),(i32 1)
-                )),
-                (v32i8 (add LASX256B:$a, LASX256B:$b))
-                )),
-               (v32i8 (build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1))
-                           )
-                ),
-              (XVAVGR_BU  (v32i8 LASX256B:$a), (v32i8 LASX256B:$b))>;
-
-def : LASXPat<(srl
-               (v16i16 (add (v16i16 (
-                  build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                               (i32 1),(i32 1),(i32 1),(i32 1),
-                               (i32 1),(i32 1),(i32 1),(i32 1),
-                               (i32 1),(i32 1),(i32 1),(i32 1)
-               )),
-               (v16i16 (add LASX256H:$a, LASX256H:$b))
-               )),
-               (v16i16 (build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                     (i32 1),(i32 1),(i32 1),(i32 1),
-                                     (i32 1),(i32 1),(i32 1),(i32 1),
-                                     (i32 1),(i32 1),(i32 1),(i32 1))
-                           )
-               ),
-             (XVAVGR_HU  (v16i16 LASX256H:$a), (v16i16 LASX256H:$b))>;
-
-def : LASXPat<(srl
-               (v8i32 (add (v8i32 (
-                  build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                               (i32 1),(i32 1),(i32 1),(i32 1)
-               )),
-               (v8i32 (add LASX256W:$a, LASX256W:$b))
-               )),
-               (v8i32 (build_vector (i32 1),(i32 1),(i32 1),(i32 1),
-                                    (i32 1),(i32 1),(i32 1),(i32 1))
-                           )
-               ),
-             (XVAVGR_WU  (v8i32 LASX256W:$a), (v8i32 LASX256W:$b))>;
-
-def : LASXPat<(srl
-               (v4i64 (add (v4i64 (
-                  build_vector (i64 1),(i64 1),(i64 1),(i64 1)
-               )),
-               (v4i64 (add LASX256D:$a, LASX256D:$b))
-               )),
-               (v4i64 (build_vector (i64 1),(i64 1),(i64 1),(i64 1))
-                           )
-                ),
-             (XVAVGR_DU  (v4i64 LASX256D:$a), (v4i64 LASX256D:$b))>;
 
 
 def : LASXPat<(mulhs LASX256D:$a, LASX256D:$b),
@@ -5651,6 +5446,13 @@ def : LASXPat<(and v4i64:$xj, (xor (shl xvsplat_imm_eq_1, v4i64:$xk),
               (XVBITCLR_D v4i64:$xj, v4i64:$xk)>;
 
 
+def : LASXPat<(insert_subvector (v32i8 LASX256B:$dst),
+                                (v16i8 LSX128B:$src), (i64 0)),
+              (XVPERMI_Q  (v32i8 LASX256B:$dst),
+                          (v32i8 (INSERT_SUBREG (v32i8 (IMPLICIT_DEF)),
+                                                 LSX128B:$src, sub_128)),
+                                                 (i32 48))>;
+
 def : LASXPat<(insert_subvector (v16i16 LASX256H:$dst),
                                 (v8i16 LSX128H:$src), (i64 0)),
               (XVPERMI_QH (v16i16 LASX256H:$dst),
@@ -5671,3 +5473,27 @@ def : LASXPat<(insert_subvector (v4i64 LASX256D:$dst),
                           (v4i64 (INSERT_SUBREG (v4i64 (IMPLICIT_DEF)),
                                                  LSX128D:$src, sub_128)),
                                                  (i32 48))>;
+
+def : LASXPat<(insert_subvector (v4i64 LASX256D:$dst),
+                                (v2i64 LSX128D:$src), (i64 2)),
+              (XVPERMI_QD (v4i64 LASX256D:$dst),
+                (v4i64 (INSERT_SUBREG (v4i64 (IMPLICIT_DEF)),
+                LSX128D:$src, sub_128)), (i32 32))>;
+
+def : LASXPat<(insert_subvector (v8i32 LASX256W:$dst),
+                                (v4i32 LSX128W:$src), (i64 4)),
+              (XVPERMI_QW (v8i32 LASX256W:$dst),
+                (v8i32 (INSERT_SUBREG (v8i32 (IMPLICIT_DEF)),
+                LSX128W:$src, sub_128)), (i32 32))>;
+
+def : LASXPat<(insert_subvector (v16i16 LASX256H:$dst),
+                                (v8i16 LSX128H:$src), (i64 8)),
+              (XVPERMI_QH (v16i16 LASX256H:$dst),
+                (v16i16 (INSERT_SUBREG (v16i16 (IMPLICIT_DEF)),
+                LSX128H:$src, sub_128)), (i32 32))>;
+
+def : LASXPat<(insert_subvector (v32i8 LASX256B:$dst),
+                                (v16i8 LSX128B:$src), (i64 16)),
+              (XVPERMI_Q (v32i8 LASX256B:$dst),
+                (v32i8 (INSERT_SUBREG (v32i8 (IMPLICIT_DEF)),
+                LSX128B:$src, sub_128)), (i32 32))>;

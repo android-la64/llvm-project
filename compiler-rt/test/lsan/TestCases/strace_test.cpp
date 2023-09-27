@@ -5,6 +5,7 @@
 // FIXME: This technically works in practice but cannot be tested because the
 // fatal-error caused adb to failed. Could not be captured to stderr to lit-check.
 // XFAIL: android
+// UNSUPPORTED : loongarch
 
 #include <stdio.h>
 #include <stdlib.h>

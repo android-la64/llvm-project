@@ -265,7 +265,9 @@ static uptr ThreadDescriptorSizeFallback() {
 #elif defined(__mips__)
   // TODO(sagarthakur): add more values as per different glibc versions.
   val = FIRST_32_SECOND_64(1152, 1776);
-#elif SANITIZER_RISCV64
+#    elif defined(__loongarch64)
+  val = 1776;
+#    elif SANITIZER_RISCV64
   int major;
   int minor;
   int patch;
@@ -280,10 +282,10 @@ static uptr ThreadDescriptorSizeFallback() {
       val = 1936;  // tested against glibc 2.32
   }
 
-#elif defined(__aarch64__)
+#    elif defined(__aarch64__)
   // The sizeof (struct pthread) is the same from GLIBC 2.17 to 2.22.
   val = 1776;
-#elif defined(__powerpc64__)
+#    elif defined(__powerpc64__)
   val = 1776; // from glibc.ppc64le 2.20-8.fc21
 #endif
   return val;
@@ -304,17 +306,20 @@ uptr ThreadDescriptorSize() {
   return val;
 }
 
-#if defined(__mips__) || defined(__powerpc64__) || SANITIZER_RISCV64
+#    if defined(__mips__) || defined(__powerpc64__) || SANITIZER_RISCV64 || \
+        defined(__loongarch__)
 // TlsPreTcbSize includes size of struct pthread_descr and size of tcb
 // head structure. It lies before the static tls blocks.
 static uptr TlsPreTcbSize() {
 #if defined(__mips__)
   const uptr kTcbHead = 16; // sizeof (tcbhead_t)
-#elif defined(__powerpc64__)
-  const uptr kTcbHead = 88; // sizeof (tcbhead_t)
-#elif SANITIZER_RISCV64
+#      elif defined(__loongarch__)
   const uptr kTcbHead = 16;  // sizeof (tcbhead_t)
-#endif
+#      elif defined(__powerpc64__)
+  const uptr kTcbHead = 88; // sizeof (tcbhead_t)
+#      elif SANITIZER_RISCV64
+  const uptr kTcbHead = 16;  // sizeof (tcbhead_t)
+#      endif
   const uptr kTlsAlign = 16;
   const uptr kTlsPreTcbSize =
       RoundUpTo(ThreadDescriptorSize() + kTcbHead, kTlsAlign);

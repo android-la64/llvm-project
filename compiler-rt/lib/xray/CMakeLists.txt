@@ -47,6 +47,11 @@ set(aarch64_SOURCES
   xray_trampoline_AArch64.S
   )
 
+set(loongarch64_SOURCES
+  xray_loongarch.cpp
+  xray_trampoline_loongarch.S
+  )
+
 set(mips_SOURCES
   xray_mips.cpp
   xray_trampoline_mips.S
@@ -117,6 +122,7 @@ set(XRAY_ALL_SOURCE_FILES
   ${arm_SOURCES}
   ${armhf_SOURCES}
   ${hexagon_SOURCES}
+  ${loongarch64_SOURCES}
   ${mips_SOURCES}
   ${mipsel_SOURCES}
   ${mips64_SOURCES}

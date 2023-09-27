@@ -13,6 +13,12 @@
 
 #include "sanitizer_platform.h"
 
+#if defined(__loongarch__)
+#  define __ARCH_WANT_RENAMEAT 1
+#  define SC_ADDRERR_RD (1 << 30)
+#  define SC_ADDRERR_WR (1 << 31)
+#endif
+
 #if SANITIZER_FREEBSD || SANITIZER_LINUX || SANITIZER_NETBSD || \
     SANITIZER_SOLARIS
 
@@ -1118,13 +1124,15 @@ uptr GetMaxVirtualAddress() {
   return (1ULL << 38) - 1;
 # elif SANITIZER_MIPS64
   return (1ULL << 40) - 1;  // 0x000000ffffffffffUL;
-# elif defined(__s390x__)
+#    elif defined(__loongarch64)
+  return (1ULL << 40) - 1;  // 0x000000ffffffffffUL;
+#    elif defined(__s390x__)
   return (1ULL << 53) - 1;  // 0x001fffffffffffffUL;
-#elif defined(__sparc__)
+#    elif defined(__sparc__)
   return ~(uptr)0;
-# else
+#    else
   return (1ULL << 47) - 1;  // 0x00007fffffffffffUL;
-# endif
+#    endif
 #else  // SANITIZER_WORDSIZE == 32
 # if defined(__s390__)
   return (1ULL << 31) - 1;  // 0x7fffffff;
@@ -1450,7 +1458,62 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
       : "memory");
   return res;
 }
-#elif defined(__aarch64__)
+#  elif defined(__loongarch__) && SANITIZER_LINUX
+uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
+                    int *parent_tidptr, void *newtls, int *child_tidptr) {
+  long long res;
+  if (!fn || !child_stack)
+    return -EINVAL;
+  CHECK_EQ(0, (uptr)child_stack % 16);
+  child_stack = (char *)child_stack - 2 * sizeof(unsigned long long);
+  ((unsigned long long *)child_stack)[0] = (uptr)fn;
+  ((unsigned long long *)child_stack)[1] = (uptr)arg;
+
+  register int __flags __asm__("r4") = flags;
+  register void *__child_stack __asm__("r5") = child_stack;
+  register int *__parent_tidptr __asm__("r6") = parent_tidptr;
+  register void *__newtls __asm__("r7") = newtls;
+  register int *__child_tidptr __asm__("r8") = child_tidptr;
+
+  __asm__ __volatile__(
+      /* $a0 = syscall($a7 = SYSCALL(clone),
+       *               $a0 = flags,
+       *               $a1 = child_stack,
+       *               $a2 = parent_tidptr,
+       *               $a3 = new_tls,
+       *               $a4 = child_tyidptr)
+       */
+
+      /* Do the system call */
+      "addi.d $a7, $r0, %1\n"
+      "syscall 0\n"
+
+      "move %0, $a0"
+      : "=r"(res)
+      : "i"(__NR_clone), "r"(__flags), "r"(__child_stack), "r"(__parent_tidptr),
+        "r"(__newtls), "r"(__child_tidptr)
+      : "memory");
+  if (res != 0) {
+    return res;
+  }
+  __asm__ __volatile__(
+      /* In the child, now. Call "fn(arg)". */
+      "ld.d $a6, $sp, 0\n"
+      "ld.d $a0, $sp, 8\n"
+
+      "jirl $r1, $a6, 0\n"
+
+      /* Call _exit($v0) */
+      "addi.d $a7, $r0, %1\n"
+      "syscall 0\n"
+
+      "move %0, $a0"
+      : "=r"(res)
+      : "i"(__NR_exit)
+      : "r1", "memory");
+  return res;
+}
+#  elif defined(__aarch64__)
 uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
                     int *parent_tidptr, void *newtls, int *child_tidptr) {
   register long long res __asm__("x0");
@@ -1501,12 +1564,12 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
                        : "x30", "memory");
   return res;
 }
-#elif defined(__powerpc64__)
+#  elif defined(__powerpc64__)
 uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
                    int *parent_tidptr, void *newtls, int *child_tidptr) {
   long long res;
 // Stack frame structure.
-#if SANITIZER_PPC64V1
+#    if SANITIZER_PPC64V1
 //   Back chain == 0        (SP + 112)
 // Frame (112 bytes):
 //   Parameter save area    (SP + 48), 8 doublewords
@@ -1516,20 +1579,20 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
 //   LR save area           (SP + 16)
 //   CR save area           (SP + 8)
 //   Back chain             (SP + 0)
-# define FRAME_SIZE 112
-# define FRAME_TOC_SAVE_OFFSET 40
-#elif SANITIZER_PPC64V2
+#      define FRAME_SIZE 112
+#      define FRAME_TOC_SAVE_OFFSET 40
+#    elif SANITIZER_PPC64V2
 //   Back chain == 0        (SP + 32)
 // Frame (32 bytes):
 //   TOC save area          (SP + 24)
 //   LR save area           (SP + 16)
 //   CR save area           (SP + 8)
 //   Back chain             (SP + 0)
-# define FRAME_SIZE 32
-# define FRAME_TOC_SAVE_OFFSET 24
-#else
-# error "Unsupported PPC64 ABI"
-#endif
+#      define FRAME_SIZE 32
+#      define FRAME_TOC_SAVE_OFFSET 24
+#    else
+#      error "Unsupported PPC64 ABI"
+#    endif
   if (!fn || !child_stack)
     return -EINVAL;
   CHECK_EQ(0, (uptr)child_stack % 16);
@@ -1542,72 +1605,62 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
   register void *__newtls      __asm__("r8") = newtls;
   register int *__ctidptr      __asm__("r9") = child_tidptr;
 
- __asm__ __volatile__(
-           /* fn and arg are saved across the syscall */
-           "mr 28, %5\n\t"
-           "mr 27, %8\n\t"
+  __asm__ __volatile__(
+      /* fn and arg are saved across the syscall */
+      "mr 28, %5\n\t"
+      "mr 27, %8\n\t"
 
-           /* syscall
-             r0 == __NR_clone
-             r3 == flags
-             r4 == child_stack
-             r5 == parent_tidptr
-             r6 == newtls
-             r7 == child_tidptr */
-           "mr 3, %7\n\t"
-           "mr 5, %9\n\t"
-           "mr 6, %10\n\t"
-           "mr 7, %11\n\t"
-           "li 0, %3\n\t"
-           "sc\n\t"
+      /* syscall
+        r0 == __NR_clone
+        r3 == flags
+        r4 == child_stack
+        r5 == parent_tidptr
+        r6 == newtls
+        r7 == child_tidptr */
+      "mr 3, %7\n\t"
+      "mr 5, %9\n\t"
+      "mr 6, %10\n\t"
+      "mr 7, %11\n\t"
+      "li 0, %3\n\t"
+      "sc\n\t"
 
-           /* Test if syscall was successful */
-           "cmpdi  cr1, 3, 0\n\t"
-           "crandc cr1*4+eq, cr1*4+eq, cr0*4+so\n\t"
-           "bne-   cr1, 1f\n\t"
+      /* Test if syscall was successful */
+      "cmpdi  cr1, 3, 0\n\t"
+      "crandc cr1*4+eq, cr1*4+eq, cr0*4+so\n\t"
+      "bne-   cr1, 1f\n\t"
 
-           /* Set up stack frame */
-           "li    29, 0\n\t"
-           "stdu  29, -8(1)\n\t"
-           "stdu  1, -%12(1)\n\t"
-           /* Do the function call */
-           "std   2, %13(1)\n\t"
-#if SANITIZER_PPC64V1
-           "ld    0, 0(28)\n\t"
-           "ld    2, 8(28)\n\t"
-           "mtctr 0\n\t"
-#elif SANITIZER_PPC64V2
-           "mr    12, 28\n\t"
-           "mtctr 12\n\t"
-#else
-# error "Unsupported PPC64 ABI"
-#endif
-           "mr    3, 27\n\t"
-           "bctrl\n\t"
-           "ld    2, %13(1)\n\t"
+      /* Set up stack frame */
+      "li    29, 0\n\t"
+      "stdu  29, -8(1)\n\t"
+      "stdu  1, -%12(1)\n\t"
+      /* Do the function call */
+      "std   2, %13(1)\n\t"
+#    if SANITIZER_PPC64V1
+      "ld    0, 0(28)\n\t"
+      "ld    2, 8(28)\n\t"
+      "mtctr 0\n\t"
+#    elif SANITIZER_PPC64V2
+      "mr    12, 28\n\t"
+      "mtctr 12\n\t"
+#    else
+#      error "Unsupported PPC64 ABI"
+#    endif
+      "mr    3, 27\n\t"
+      "bctrl\n\t"
+      "ld    2, %13(1)\n\t"
 
-           /* Call _exit(r3) */
-           "li 0, %4\n\t"
-           "sc\n\t"
+      /* Call _exit(r3) */
+      "li 0, %4\n\t"
+      "sc\n\t"
 
-           /* Return to parent */
-           "1:\n\t"
-           "mr %0, 3\n\t"
-             : "=r" (res)
-             : "0" (-1),
-               "i" (EINVAL),
-               "i" (__NR_clone),
-               "i" (__NR_exit),
-               "r" (__fn),
-               "r" (__cstack),
-               "r" (__flags),
-               "r" (__arg),
-               "r" (__ptidptr),
-               "r" (__newtls),
-               "r" (__ctidptr),
-               "i" (FRAME_SIZE),
-               "i" (FRAME_TOC_SAVE_OFFSET)
-             : "cr0", "cr1", "memory", "ctr", "r0", "r27", "r28", "r29");
+      /* Return to parent */
+      "1:\n\t"
+      "mr %0, 3\n\t"
+      : "=r"(res)
+      : "0"(-1), "i"(EINVAL), "i"(__NR_clone), "i"(__NR_exit), "r"(__fn),
+        "r"(__cstack), "r"(__flags), "r"(__arg), "r"(__ptidptr), "r"(__newtls),
+        "r"(__ctidptr), "i"(FRAME_SIZE), "i"(FRAME_TOC_SAVE_OFFSET)
+      : "cr0", "cr1", "memory", "ctr", "r0", "r27", "r28", "r29");
   return res;
 }
 #elif defined(__i386__)
@@ -1623,56 +1676,53 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
   ((unsigned int *)child_stack)[2] = (uptr)fn;
   ((unsigned int *)child_stack)[3] = (uptr)arg;
   __asm__ __volatile__(
-                       /* %eax = syscall(%eax = SYSCALL(clone),
-                        *                %ebx = flags,
-                        *                %ecx = child_stack,
-                        *                %edx = parent_tidptr,
-                        *                %esi  = new_tls,
-                        *                %edi = child_tidptr)
-                        */
+      /* %eax = syscall(%eax = SYSCALL(clone),
+       *                %ebx = flags,
+       *                %ecx = child_stack,
+       *                %edx = parent_tidptr,
+       *                %esi  = new_tls,
+       *                %edi = child_tidptr)
+       */
 
-                        /* Obtain flags */
-                        "movl    (%%ecx), %%ebx\n"
-                        /* Do the system call */
-                        "pushl   %%ebx\n"
-                        "pushl   %%esi\n"
-                        "pushl   %%edi\n"
-                        /* Remember the flag value.  */
-                        "movl    %%ebx, (%%ecx)\n"
-                        "int     $0x80\n"
-                        "popl    %%edi\n"
-                        "popl    %%esi\n"
-                        "popl    %%ebx\n"
+      /* Obtain flags */
+      "movl    (%%ecx), %%ebx\n"
+      /* Do the system call */
+      "pushl   %%ebx\n"
+      "pushl   %%esi\n"
+      "pushl   %%edi\n"
+      /* Remember the flag value.  */
+      "movl    %%ebx, (%%ecx)\n"
+      "int     $0x80\n"
+      "popl    %%edi\n"
+      "popl    %%esi\n"
+      "popl    %%ebx\n"
 
-                        /* if (%eax != 0)
-                         *   return;
-                         */
+      /* if (%eax != 0)
+       *   return;
+       */
 
-                        "test    %%eax,%%eax\n"
-                        "jnz    1f\n"
+      "test    %%eax,%%eax\n"
+      "jnz    1f\n"
 
-                        /* terminate the stack frame */
-                        "xorl   %%ebp,%%ebp\n"
-                        /* Call FN. */
-                        "call    *%%ebx\n"
-#ifdef PIC
-                        "call    here\n"
-                        "here:\n"
-                        "popl    %%ebx\n"
-                        "addl    $_GLOBAL_OFFSET_TABLE_+[.-here], %%ebx\n"
-#endif
-                        /* Call exit */
-                        "movl    %%eax, %%ebx\n"
-                        "movl    %2, %%eax\n"
-                        "int     $0x80\n"
-                        "1:\n"
-                       : "=a" (res)
-                       : "a"(SYSCALL(clone)), "i"(SYSCALL(exit)),
-                         "c"(child_stack),
-                         "d"(parent_tidptr),
-                         "S"(newtls),
-                         "D"(child_tidptr)
-                       : "memory");
+      /* terminate the stack frame */
+      "xorl   %%ebp,%%ebp\n"
+      /* Call FN. */
+      "call    *%%ebx\n"
+#    ifdef PIC
+      "call    here\n"
+      "here:\n"
+      "popl    %%ebx\n"
+      "addl    $_GLOBAL_OFFSET_TABLE_+[.-here], %%ebx\n"
+#    endif
+      /* Call exit */
+      "movl    %%eax, %%ebx\n"
+      "movl    %2, %%eax\n"
+      "int     $0x80\n"
+      "1:\n"
+      : "=a"(res)
+      : "a"(SYSCALL(clone)), "i"(SYSCALL(exit)), "c"(child_stack),
+        "d"(parent_tidptr), "S"(newtls), "D"(child_tidptr)
+      : "memory");
   return res;
 }
 #elif defined(__arm__)
@@ -1691,22 +1741,22 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
   register int *r4 __asm__("r4") = child_tidptr;
   register int r7 __asm__("r7") = __NR_clone;
 
-#if __ARM_ARCH > 4 || defined (__ARM_ARCH_4T__)
-# define ARCH_HAS_BX
-#endif
-#if __ARM_ARCH > 4
-# define ARCH_HAS_BLX
-#endif
+#    if __ARM_ARCH > 4 || defined(__ARM_ARCH_4T__)
+#      define ARCH_HAS_BX
+#    endif
+#    if __ARM_ARCH > 4
+#      define ARCH_HAS_BLX
+#    endif
 
-#ifdef ARCH_HAS_BX
-# ifdef ARCH_HAS_BLX
-#  define BLX(R) "blx "  #R "\n"
-# else
-#  define BLX(R) "mov lr, pc; bx " #R "\n"
-# endif
-#else
-# define BLX(R)  "mov lr, pc; mov pc," #R "\n"
-#endif
+#    ifdef ARCH_HAS_BX
+#      ifdef ARCH_HAS_BLX
+#        define BLX(R) "blx " #        R "\n"
+#      else
+#        define BLX(R) "mov lr, pc; bx " #        R "\n"
+#      endif
+#    else
+#      define BLX(R) "mov lr, pc; mov pc," #      R "\n"
+#    endif
 
   __asm__ __volatile__(
                        /* %r0 = syscall(%r7 = SYSCALL(clone),
@@ -1744,7 +1794,7 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
 #endif
 #endif  // SANITIZER_LINUX
 
-#if SANITIZER_LINUX
+#  if SANITIZER_LINUX
 int internal_uname(struct utsname *buf) {
   return internal_syscall(SYSCALL(uname), buf);
 }
@@ -1946,6 +1996,13 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
 #endif
   }
   return SignalContext::Unknown;
+#  elif defined(__loongarch__)
+  u32 flags = ucontext->uc_mcontext.__flags;
+  if (flags & SC_ADDRERR_RD)
+    return SignalContext::Read;
+  if (flags & SC_ADDRERR_WR)
+    return SignalContext::Write;
+  return SignalContext::Unknown;
 #elif defined(__arm__)
   static const uptr FSR_WRITE = 1U << 11;
   uptr fsr = ucontext->uc_mcontext.error_code;
@@ -1958,17 +2015,17 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
 #elif defined(__sparc__)
   // Decode the instruction to determine the access type.
   // From OpenSolaris $SRC/uts/sun4/os/trap.c (get_accesstype).
-#if SANITIZER_SOLARIS
+#    if SANITIZER_SOLARIS
   uptr pc = ucontext->uc_mcontext.gregs[REG_PC];
-#else
+#    else
   // Historical BSDism here.
   struct sigcontext *scontext = (struct sigcontext *)context;
-#if defined(__arch64__)
+#      if defined(__arch64__)
   uptr pc = scontext->sigc_regs.tpc;
-#else
+#      else
   uptr pc = scontext->si_regs.pc;
-#endif
-#endif
+#      endif
+#    endif
   u32 instr = *(u32 *)pc;
   return (instr >> 21) & 1 ? Write: Read;
 #elif defined(__riscv)
@@ -1979,7 +2036,7 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
 #endif
   unsigned faulty_instruction = *(uint16_t *)pc;
 
-#if defined(__riscv_compressed)
+#    if defined(__riscv_compressed)
   if ((faulty_instruction & 0x3) != 0x3) {  // it's a compressed instruction
     // set op_bits to the instruction bits [1, 0, 15, 14, 13]
     unsigned op_bits =
@@ -1987,29 +2044,29 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
     unsigned rd = faulty_instruction & 0xF80;  // bits 7-11, inclusive
     switch (op_bits) {
       case 0b10'010:  // c.lwsp (rd != x0)
-#if __riscv_xlen == 64
+#      if __riscv_xlen == 64
       case 0b10'011:  // c.ldsp (rd != x0)
 #endif
         return rd ? SignalContext::Read : SignalContext::Unknown;
       case 0b00'010:  // c.lw
-#if __riscv_flen >= 32 && __riscv_xlen == 32
+#      if __riscv_flen >= 32 && __riscv_xlen == 32
       case 0b10'011:  // c.flwsp
-#endif
-#if __riscv_flen >= 32 || __riscv_xlen == 64
+#      endif
+#      if __riscv_flen >= 32 || __riscv_xlen == 64
       case 0b00'011:  // c.flw / c.ld
-#endif
-#if __riscv_flen == 64
+#      endif
+#      if __riscv_flen == 64
       case 0b00'001:  // c.fld
       case 0b10'001:  // c.fldsp
 #endif
         return SignalContext::Read;
       case 0b00'110:  // c.sw
       case 0b10'110:  // c.swsp
-#if __riscv_flen >= 32 || __riscv_xlen == 64
+#      if __riscv_flen >= 32 || __riscv_xlen == 64
       case 0b00'111:  // c.fsw / c.sd
       case 0b10'111:  // c.fswsp / c.sdsp
-#endif
-#if __riscv_flen == 64
+#      endif
+#      if __riscv_flen == 64
       case 0b00'101:  // c.fsd
       case 0b10'101:  // c.fsdsp
 #endif
@@ -2018,7 +2075,7 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
         return SignalContext::Unknown;
     }
   }
-#endif
+#    endif
 
   unsigned opcode = faulty_instruction & 0x7f;         // lower 7 bits
   unsigned funct3 = (faulty_instruction >> 12) & 0x7;  // bits 12-14, inclusive
@@ -2028,9 +2085,9 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
         case 0b000:  // lb
         case 0b001:  // lh
         case 0b010:  // lw
-#if __riscv_xlen == 64
+#    if __riscv_xlen == 64
         case 0b011:  // ld
-#endif
+#    endif
         case 0b100:  // lbu
         case 0b101:  // lhu
           return SignalContext::Read;
@@ -2042,18 +2099,18 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
         case 0b000:  // sb
         case 0b001:  // sh
         case 0b010:  // sw
-#if __riscv_xlen == 64
+#    if __riscv_xlen == 64
         case 0b011:  // sd
 #endif
           return SignalContext::Write;
         default:
           return SignalContext::Unknown;
       }
-#if __riscv_flen >= 32
+#    if __riscv_flen >= 32
     case 0b0000111:  // floating-point loads
       switch (funct3) {
         case 0b010:  // flw
-#if __riscv_flen == 64
+#      if __riscv_flen == 64
         case 0b011:  // fld
 #endif
           return SignalContext::Read;
@@ -2063,18 +2120,18 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
     case 0b0100111:  // floating-point stores
       switch (funct3) {
         case 0b010:  // fsw
-#if __riscv_flen == 64
+#      if __riscv_flen == 64
         case 0b011:  // fsd
 #endif
           return SignalContext::Write;
         default:
           return SignalContext::Unknown;
       }
-#endif
+#    endif
     default:
       return SignalContext::Unknown;
   }
-#else
+#  else
   (void)ucontext;
   return Unknown;  // FIXME: Implement.
 #endif
@@ -2198,16 +2255,21 @@ static void GetPcSpBp(void *context, uptr *pc, uptr *sp, uptr *bp) {
   *pc = ucontext->uc_mcontext.pc;
   *bp = ucontext->uc_mcontext.gregs[30];
   *sp = ucontext->uc_mcontext.gregs[29];
-#elif defined(__s390__)
+#  elif defined(__loongarch__)
+  ucontext_t *ucontext = (ucontext_t *)context;
+  *pc = ucontext->uc_mcontext.__pc;
+  *bp = ucontext->uc_mcontext.__gregs[22];
+  *sp = ucontext->uc_mcontext.__gregs[3];
+#  elif defined(__s390__)
   ucontext_t *ucontext = (ucontext_t*)context;
-# if defined(__s390x__)
+#    if defined(__s390x__)
   *pc = ucontext->uc_mcontext.psw.addr;
-# else
+#    else
   *pc = ucontext->uc_mcontext.psw.addr & 0x7fffffff;
-# endif
+#    endif
   *bp = ucontext->uc_mcontext.gregs[11];
   *sp = ucontext->uc_mcontext.gregs[15];
-#elif defined(__riscv)
+#  elif defined(__riscv)
   ucontext_t *ucontext = (ucontext_t*)context;
 #    if SANITIZER_FREEBSD
   *pc = ucontext->uc_mcontext.mc_gpregs.gp_sepc;

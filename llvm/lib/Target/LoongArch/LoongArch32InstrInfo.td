@@ -363,6 +363,10 @@ def : LoongArchPat<(brcond RC:$cond, bb:$dst),
 
 defm : BrcondPats<GPR32, BEQ32, BEQ32, BNE32, SLT32, SLTU32, SLTI32, SLTUI32, ZERO>, GPR_64;
 
+defm atomic_cmp_swap_8  : ternary_atomic_op_failure_ord;
+defm atomic_cmp_swap_16 : ternary_atomic_op_failure_ord;
+defm atomic_cmp_swap_32 : ternary_atomic_op_failure_ord;
+
 let usesCustomInserter = 1 in {
   def ATOMIC_LOAD_ADD_I8   : Atomic2Ops<atomic_load_add_8, GPR32>;
   def ATOMIC_LOAD_ADD_I16  : Atomic2Ops<atomic_load_add_16, GPR32>;
@@ -387,9 +391,9 @@ let usesCustomInserter = 1 in {
   def ATOMIC_SWAP_I16      : Atomic2Ops<atomic_swap_16, GPR32>;
   def ATOMIC_SWAP_I32      : Atomic2Ops<atomic_swap_32, GPR32>;
 
-  def ATOMIC_CMP_SWAP_I8   : AtomicCmpSwap<atomic_cmp_swap_8, GPR32>;
-  def ATOMIC_CMP_SWAP_I16  : AtomicCmpSwap<atomic_cmp_swap_16, GPR32>;
-  def ATOMIC_CMP_SWAP_I32  : AtomicCmpSwap<atomic_cmp_swap_32, GPR32>;
+  defm I8_  : AtomicCmpSwapInstrs<"8", GPR32>;
+  defm I16_ : AtomicCmpSwapInstrs<"16", GPR32>;
+  defm I32_ : AtomicCmpSwapInstrs<"32", GPR32>;
 
   def ATOMIC_LOAD_MAX_I8   : Atomic2Ops<atomic_load_max_8, GPR32>;
   def ATOMIC_LOAD_MAX_I16  : Atomic2Ops<atomic_load_max_16, GPR32>;

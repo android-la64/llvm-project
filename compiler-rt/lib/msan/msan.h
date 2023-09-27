@@ -60,8 +60,32 @@ const MappingDesc kMemoryLayout[] = {
     {0x00c000000000ULL, 0x00e200000000ULL, MappingDesc::INVALID, "invalid"},
     {0x00e200000000ULL, 0x00ffffffffffULL, MappingDesc::APP, "app-3"}};
 
-#define MEM_TO_SHADOW(mem) (((uptr)(mem)) ^ 0x8000000000ULL)
-#define SHADOW_TO_ORIGIN(shadow) (((uptr)(shadow)) + 0x2000000000ULL)
+#  define MEM_TO_SHADOW(mem) (((uptr)(mem)) ^ 0x8000000000ULL)
+#  define SHADOW_TO_ORIGIN(shadow) (((uptr)(shadow)) + 0x2000000000ULL)
+
+#elif SANITIZER_LINUX && defined(__loongarch64)
+
+// LOONGARCH64 maps:
+// - 0x0000000000-0x0200000000: Program own segments
+// - 0xa200000000-0xc000000000: PIE program segments
+// - 0xe200000000-0xffffffffff: libraries segments.
+const MappingDesc kMemoryLayout[] = {
+    {0x000000000000ULL, 0x000200000000ULL, MappingDesc::APP, "app-1"},
+    {0x000200000000ULL, 0x002200000000ULL, MappingDesc::INVALID, "invalid"},
+    {0x002200000000ULL, 0x004000000000ULL, MappingDesc::SHADOW, "shadow-2"},
+    {0x004000000000ULL, 0x004200000000ULL, MappingDesc::INVALID, "invalid"},
+    {0x004200000000ULL, 0x006000000000ULL, MappingDesc::ORIGIN, "origin-2"},
+    {0x006000000000ULL, 0x006200000000ULL, MappingDesc::INVALID, "invalid"},
+    {0x006200000000ULL, 0x008000000000ULL, MappingDesc::SHADOW, "shadow-3"},
+    {0x008000000000ULL, 0x008200000000ULL, MappingDesc::SHADOW, "shadow-1"},
+    {0x008200000000ULL, 0x00a000000000ULL, MappingDesc::ORIGIN, "origin-3"},
+    {0x00a000000000ULL, 0x00a200000000ULL, MappingDesc::ORIGIN, "origin-1"},
+    {0x00a200000000ULL, 0x00c000000000ULL, MappingDesc::APP, "app-2"},
+    {0x00c000000000ULL, 0x00e200000000ULL, MappingDesc::INVALID, "invalid"},
+    {0x00e200000000ULL, 0x00ffffffffffULL, MappingDesc::APP, "app-3"}};
+
+#  define MEM_TO_SHADOW(mem) (((uptr)(mem)) ^ 0x8000000000ULL)
+#  define SHADOW_TO_ORIGIN(shadow) (((uptr)(shadow)) + 0x2000000000ULL)
 
 #elif SANITIZER_LINUX && defined(__aarch64__)
 

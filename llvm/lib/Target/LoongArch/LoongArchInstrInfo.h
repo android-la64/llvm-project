@@ -17,8 +17,6 @@
 #ifndef LLVM_LIB_TARGET_LOONGARCH_LOONGARCHINSTRINFO_H
 #define LLVM_LIB_TARGET_LOONGARCH_LOONGARCHINSTRINFO_H
 
-#define DBAR_HINT 0x700
-
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
 #include "LoongArch.h"
 #include "LoongArchRegisterInfo.h"

@@ -162,9 +162,11 @@ static const u64 kAddressSpaceSize = 1ULL << 39;
 static const u64 kAddressSpaceSize = 1ULL << 53;
 #elif defined(__s390__)
 static const u64 kAddressSpaceSize = 1ULL << 31;
-#else
+#  elif defined(__loongarch64)
+static const u64 kAddressSpaceSize = 1ULL << 40;
+#  else
 static const u64 kAddressSpaceSize = 1ULL << 32;
-#endif
+#  endif
 
 static const uptr kRegionSizeLog = FIRST_32_SECOND_64(20, 24);
 

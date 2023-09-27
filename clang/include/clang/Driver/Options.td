@@ -3993,6 +3993,12 @@ def mno_relax_pic_calls : Flag<["-"], "mno-relax-pic-calls">,
   Group<m_mips_Features_Group>,
   HelpText<"Do not produce relaxation hints for linkers to try optimizing PIC "
            "call sequences into direct calls (MIPS only)">, Flags<[HelpHidden]>;
+def mfix_loongson3_llsc : Flag<["-"], "mfix-loongson3-llsc">,
+  Group<m_mips_Features_Group>,
+  HelpText<"Workaround loongson3 llsc erratum (MIPS only)">;
+def mno_fix_loongson3_llsc : Flag<["-"], "mno-fix-loongson3-llsc">,
+  Group<m_mips_Features_Group>,
+  HelpText<"Don't Workaround loongson3 llsc erratum (MIPS only)">;
 def mglibc : Flag<["-"], "mglibc">, Group<m_libc_Group>, Flags<[HelpHidden]>;
 def muclibc : Flag<["-"], "muclibc">, Group<m_libc_Group>, Flags<[HelpHidden]>;
 def module_file_info : Flag<["-"], "module-file-info">, Flags<[NoXarchOption,CC1Option]>, Group<Action_Group>,

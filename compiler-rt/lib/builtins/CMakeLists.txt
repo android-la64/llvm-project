@@ -14,7 +14,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
   set(LLVM_COMMON_CMAKE_UTILS "${COMPILER_RT_SOURCE_DIR}/../cmake")
 
-  # Add path for custom modules
+# Add path for custom modules
   list(INSERT CMAKE_MODULE_PATH 0
     "${COMPILER_RT_SOURCE_DIR}/cmake"
     "${COMPILER_RT_SOURCE_DIR}/cmake/Modules"
@@ -627,6 +627,14 @@ set(mips64_SOURCES ${GENERIC_TF_SOURCES}
                    ${mips_SOURCES})
 set(mips64el_SOURCES ${GENERIC_TF_SOURCES}
                      ${mips_SOURCES})
+set(loongarch_SOURCES
+  loongarch/fp_mode.c
+  ${GENERIC_SOURCES}
+  ${GENERIC_TF_SOURCES}
+)
+set(loongarch64_SOURCES
+  ${loongarch_SOURCES}
+)
 
 set(powerpc_SOURCES ${GENERIC_SOURCES})
 

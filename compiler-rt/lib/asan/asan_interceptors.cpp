@@ -39,7 +39,7 @@
 
 #  if defined(__i386) && SANITIZER_LINUX
 #    define ASAN_PTHREAD_CREATE_VERSION "GLIBC_2.1"
-#  elif defined(__mips__) && SANITIZER_LINUX
+#  elif (defined(__mips__) || defined(__loongarch__)) && SANITIZER_LINUX
 #    define ASAN_PTHREAD_CREATE_VERSION "GLIBC_2.2"
 #  endif
 

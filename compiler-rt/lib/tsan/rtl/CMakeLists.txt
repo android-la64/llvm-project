@@ -122,6 +122,7 @@ if(APPLE)
   add_asm_sources(TSAN_ASM_SOURCES
     tsan_rtl_amd64.S
     tsan_rtl_aarch64.S
+    tsan_rtl_loongarch64.S
     )
 
   set(TSAN_LINK_LIBS ${SANITIZER_COMMON_LINK_LIBS})
@@ -211,6 +212,8 @@ else()
       add_asm_sources(TSAN_ASM_SOURCES
         tsan_rtl_mips64.S
         )
+    elseif(arch MATCHES "loongarch64")
+	  add_asm_sources(TSAN_ASM_SOURCES tsan_rtl_loongarch64.S)
     elseif(arch MATCHES "s390x")
       add_asm_sources(TSAN_ASM_SOURCES
         tsan_rtl_s390x.S

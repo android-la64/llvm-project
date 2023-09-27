@@ -27,6 +27,12 @@
 
 using namespace llvm;
 
+static cl::opt<bool>
+EnableLoongson3FixLLSC("mips-fix-loongson3-llsc", cl::Hidden,
+                cl::desc("Work around loongson3 llsc erratum"),
+                cl::init(true));
+
+
 #define DEBUG_TYPE "mips-pseudo"
 
 namespace {
@@ -188,6 +194,21 @@ bool MipsExpandPseudo::expandAtomicCmpSwapSubword(
         .addImm(ShiftImm);
   }
 
+  if (EnableLoongson3FixLLSC) {
+    bool Has_sync = false;
+    for (MachineBasicBlock::iterator MBBb = sinkMBB->begin(), MBBe = sinkMBB->end();
+         MBBb != MBBe; ++MBBb) {
+      Has_sync |= MBBb->getOpcode() == Mips::SYNC ? true : false;
+      if (MBBb->mayLoad() || MBBb->mayStore())
+        break;
+    }
+
+    if (!Has_sync) {
+      MachineBasicBlock::iterator Pos = sinkMBB->begin();
+      BuildMI(*sinkMBB, Pos, DL, TII->get(Mips::SYNC)).addImm(0);
+    }
+  }
+
   LivePhysRegs LiveRegs;
   computeAndAddLiveIns(LiveRegs, *loop1MBB);
   computeAndAddLiveIns(LiveRegs, *loop2MBB);
@@ -288,6 +309,20 @@ bool MipsExpandPseudo::expandAtomicCmpSwap(MachineBasicBlock &BB,
     .addReg(Scratch).addReg(Ptr).addImm(0);
   BuildMI(loop2MBB, DL, TII->get(BEQ))
     .addReg(Scratch, RegState::Kill).addReg(ZERO).addMBB(loop1MBB);
+
+  if (EnableLoongson3FixLLSC) {
+    bool Has_sync = false;
+    for (MachineBasicBlock::iterator MBBb = exitMBB->begin(), MBBe = exitMBB->end();
+         MBBb != MBBe; ++MBBb) {
+      Has_sync |= MBBb->getOpcode() == Mips::SYNC ? true : false;
+      if (MBBb->mayLoad() || MBBb->mayStore())
+        break;
+    }
+    if (!Has_sync) {
+      MachineBasicBlock::iterator Pos = exitMBB->begin();
+      BuildMI(*exitMBB, Pos, DL, TII->get(Mips::SYNC)).addImm(0);
+    }
+  }
 
   LivePhysRegs LiveRegs;
   computeAndAddLiveIns(LiveRegs, *loop1MBB);

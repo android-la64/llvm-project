@@ -1,6 +1,6 @@
 include(CompilerRTCompile)
 
-filter_available_targets(INTERCEPTION_UNITTEST_SUPPORTED_ARCH x86_64 i386 mips64 mips64el)
+filter_available_targets(INTERCEPTION_UNITTEST_SUPPORTED_ARCH x86_64 i386 mips64 mips64el loongarch64)
 
 set(INTERCEPTION_UNITTESTS
   interception_linux_test.cpp

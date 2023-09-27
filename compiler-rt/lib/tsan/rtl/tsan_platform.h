@@ -116,6 +116,42 @@ struct MappingMips64_40 {
 };
 
 /*
+ * TODO same as mips64 and need to change in the future
+C/C++ on linux/loongarch64 (40-bit VMA)
+0000 0000 00 - 0100 0000 00: -                                           (4 GB)
+0100 0000 00 - 0200 0000 00: main binary                                 (4 GB)
+0200 0000 00 - 2000 0000 00: -                                         (120 GB)
+2000 0000 00 - 4000 0000 00: shadow                                    (128 GB)
+4000 0000 00 - 5000 0000 00: metainfo (memory blocks and sync objects)  (64 GB)
+5000 0000 00 - aa00 0000 00: -                                         (360 GB)
+aa00 0000 00 - ab00 0000 00: main binary (PIE)                           (4 GB)
+ab00 0000 00 - b000 0000 00: -                                          (20 GB)
+b000 0000 00 - b200 0000 00: traces                                      (8 GB)
+b200 0000 00 - fe00 0000 00: -                                         (304 GB)
+fe00 0000 00 - ff00 0000 00: heap                                        (4 GB)
+ff00 0000 00 - ff80 0000 00: -                                           (2 GB)
+ff80 0000 00 - ffff ffff ff: modules and main thread stack              (<2 GB)
+*/
+struct MappingLoongArch64_40 {
+  static const uptr kMetaShadowBeg = 0x4000000000ull;
+  static const uptr kMetaShadowEnd = 0x5000000000ull;
+  static const uptr kShadowBeg = 0x1200000000ull;
+  static const uptr kShadowEnd = 0x2200000000ull;
+  static const uptr kHeapMemBeg    = 0xfe00000000ull;
+  static const uptr kHeapMemEnd    = 0xff00000000ull;
+  static const uptr kLoAppMemBeg   = 0x0100000000ull;
+  static const uptr kLoAppMemEnd   = 0x0200000000ull;
+  static const uptr kMidAppMemBeg  = 0xaa00000000ull;
+  static const uptr kMidAppMemEnd  = 0xab00000000ull;
+  static const uptr kHiAppMemBeg   = 0xff80000000ull;
+  static const uptr kHiAppMemEnd   = 0xffffffffffull;
+  static const uptr kShadowMsk = 0xf800000000ull;
+  static const uptr kShadowXor = 0x0800000000ull;
+  static const uptr kShadowAdd = 0x0000000000ull;
+  static const uptr kVdsoBeg       = 0xfffff00000ull;
+};
+
+/*
 C/C++ on Darwin/iOS/ARM64 (36-bit VMA, 64 GB VM)
 0000 0000 00 - 0100 0000 00: -                                    (4 GB)
 0100 0000 00 - 0200 0000 00: main binary, modules, thread stacks  (4 GB)
@@ -610,6 +646,8 @@ ALWAYS_INLINE auto SelectMapping(Arg arg) {
   }
 #  elif defined(__mips64)
   return Func::template Apply<MappingMips64_40>(arg);
+#  elif defined(__loongarch64)
+  return Func::template Apply<MappingLoongArch64_40>(arg);
 #  elif defined(__s390x__)
   return Func::template Apply<MappingS390x>(arg);
 #  else
@@ -623,6 +661,7 @@ template <typename Func>
 void ForEachMapping() {
   Func::template Apply<Mapping48AddressSpace>();
   Func::template Apply<MappingMips64_40>();
+  Func::template Apply<MappingLoongArch64_40>();
   Func::template Apply<MappingAppleAarch64>();
   Func::template Apply<MappingAarch64_39>();
   Func::template Apply<MappingAarch64_42>();

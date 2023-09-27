@@ -273,8 +273,8 @@
 #if SI_LINUX_NOT_ANDROID &&                                                \
     (defined(__i386) || defined(__x86_64) || defined(__mips64) ||          \
      defined(__powerpc64__) || defined(__aarch64__) || defined(__arm__) || \
-     defined(__s390__) || SANITIZER_RISCV64)
-#define SANITIZER_INTERCEPT_PTRACE 1
+     defined(__s390__) || SANITIZER_RISCV64 || defined(__loongarch__))
+#  define SANITIZER_INTERCEPT_PTRACE 1
 #else
 #define SANITIZER_INTERCEPT_PTRACE 0
 #endif
@@ -489,7 +489,8 @@
 #define SANITIZER_INTERCEPT_MEMALIGN (!SI_FREEBSD && !SI_MAC && !SI_NETBSD)
 #define SANITIZER_INTERCEPT___LIBC_MEMALIGN SI_GLIBC
 #define SANITIZER_INTERCEPT_PVALLOC (SI_GLIBC || SI_ANDROID)
-#define SANITIZER_INTERCEPT_CFREE (SI_GLIBC && !SANITIZER_RISCV64)
+#define SANITIZER_INTERCEPT_CFREE \
+  (SI_GLIBC && !SANITIZER_RISCV64 && !SANITIZER_LOONGARCH)
 #define SANITIZER_INTERCEPT_REALLOCARRAY SI_POSIX
 #define SANITIZER_INTERCEPT_ALIGNED_ALLOC (!SI_MAC)
 #define SANITIZER_INTERCEPT_MALLOC_USABLE_SIZE (!SI_MAC && !SI_NETBSD)

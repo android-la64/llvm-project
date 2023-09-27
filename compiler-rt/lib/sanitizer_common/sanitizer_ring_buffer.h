@@ -84,21 +84,24 @@ template <class T>
 class CompactRingBuffer {
   // Top byte of long_ stores the buffer size in pages.
   // Lower bytes store the address of the next buffer element.
-  static constexpr int kPageSizeBits = 12;
   static constexpr int kSizeShift = 56;
   static constexpr int kSizeBits = 64 - kSizeShift;
   static constexpr uptr kNextMask = (1ULL << kSizeShift) - 1;
 
-  uptr GetStorageSize() const { return (long_ >> kSizeShift) << kPageSizeBits; }
+  uptr GetStorageSize() const {
+    unsigned kPageSizeBits = Log2(GetPageSizeCached());
+    return (long_ >> kSizeShift) << kPageSizeBits;
+  }
 
   static uptr SignExtend(uptr x) { return ((sptr)x) << kSizeBits >> kSizeBits; }
 
   void Init(void *storage, uptr size) {
+    unsigned kPageSizeBits = Log2(GetPageSizeCached());
     CHECK_EQ(sizeof(CompactRingBuffer<T>), sizeof(void *));
     CHECK(IsPowerOfTwo(size));
     CHECK_GE(size, 1 << kPageSizeBits);
     CHECK_LE(size, 128 << kPageSizeBits);
-    CHECK_EQ(size % 4096, 0);
+    CHECK_EQ(size % GetPageSizeCached(), 0);
     CHECK_EQ(size % sizeof(T), 0);
     uptr st = (uptr)storage;
     CHECK_EQ(st % (size * 2), 0);
