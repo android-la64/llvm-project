@@ -290,7 +290,7 @@ void LinkerDriver::addFile(StringRef path, bool withLOption) {
 // Add a given library by searching it from input search paths.
 void LinkerDriver::addLibrary(StringRef name) {
   if (Optional<std::string> path = searchLibrary(name))
-    addFile(*path, /*withLOption=*/true);
+    addFile(saver().save(*path), /*withLOption=*/true);
   else
     error("unable to find library -l" + name, ErrorTag::LibNotFound, {name});
 }
@@ -589,11 +589,6 @@ void LinkerDriver::linkerMain(ArrayRef<const char *> argsArr) {
     checkOptions();
     if (errorCount())
       return;
-
-    // The Target instance handles target-specific stuff, such as applying
-    // relocations or writing a PLT section. It also contains target-dependent
-    // values such as a default image base address.
-    target = getTarget();
 
     link(args);
   }
@@ -1150,6 +1145,7 @@ static void readConfigs(opt::InputArgList &args) {
   config->optimize = args::getInteger(args, OPT_O, 1);
   config->orphanHandling = getOrphanHandling(args);
   config->outputFile = args.getLastArgValue(OPT_o);
+  config->packageMetadata = args.getLastArgValue(OPT_package_metadata);
   config->pie = args.hasFlag(OPT_pie, OPT_no_pie, false);
   config->printIcfSections =
       args.hasFlag(OPT_print_icf_sections, OPT_no_print_icf_sections, false);
@@ -1334,12 +1330,15 @@ static void readConfigs(opt::InputArgList &args) {
     parseClangOption(std::string("-") + arg->getValue(), arg->getSpelling());
 
   // GCC collect2 passes -plugin-opt=path/to/lto-wrapper with an absolute or
-  // relative path. Just ignore. If not ended with "lto-wrapper", consider it an
+  // relative path. Just ignore. If not ended with "lto-wrapper" (or
+  // "lto-wrapper.exe" for GCC cross-compiled for Windows), consider it an
   // unsupported LLVMgold.so option and error.
-  for (opt::Arg *arg : args.filtered(OPT_plugin_opt_eq))
-    if (!StringRef(arg->getValue()).endswith("lto-wrapper"))
+  for (opt::Arg *arg : args.filtered(OPT_plugin_opt_eq)) {
+    StringRef v(arg->getValue());
+    if (!v.endswith("lto-wrapper") && !v.endswith("lto-wrapper.exe"))
       error(arg->getSpelling() + ": unknown plugin option '" + arg->getValue() +
             "'");
+  }
 
   config->passPlugins = args::getStrings(args, OPT_load_pass_plugins);
 

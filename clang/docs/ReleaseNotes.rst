@@ -8,13 +8,6 @@ Clang |release| |ReleaseNotesTitle|
 
 Written by the `LLVM Team <https://llvm.org/>`_
 
-.. only:: PreRelease
-
-  .. warning::
-     These are in-progress notes for the upcoming Clang |version| release.
-     Release notes for previous releases can be found on
-     `the Download Page <https://releases.llvm.org/download.html>`_.
-
 Introduction
 ============
 
@@ -43,6 +36,22 @@ Some of the major new features and improvements to Clang are listed
 here. Generic improvements to Clang as a whole or to its underlying
 infrastructure are described first, followed by language-specific
 sections with improvements to Clang's support for those languages.
+
+Potentially Breaking Changes
+============================
+These changes are ones which we think may surprise users when upgrading to
+Clang |release| because of the opportunity they pose for disruption to existing
+code bases.
+
+- The ``-Wimplicit-function-declaration`` and ``-Wimplicit-int`` warning
+  diagnostics are now enabled by default in C99, C11, and C17. As of C2x,
+  support for implicit function declarations and implicit int has been removed,
+  and the warning options will have no effect. Specifying ``-Wimplicit-int`` in
+  C89 mode will now issue warnings instead of being a noop.
+  *NOTE* these warnings are expected to default to an error in Clang 16. We
+  recommend that projects using configure scripts verify the results do not
+  change before/after setting ``-Werror=implicit-function-declarations`` or
+  ``-Wimplicit-int`` to avoid incompatibility with Clang 16.
 
 Major New Features
 ------------------
@@ -127,7 +136,7 @@ Bug Fixes
   This fixes Issue `Issue 53488 <https://github.com/llvm/llvm-project/issues/53488>`_.
 - According to `CWG 1394 <https://wg21.link/cwg1394>`_ and
   `C++20 [dcl.fct.def.general]p2 <https://timsong-cpp.github.io/cppwp/n4868/dcl.fct.def#general-2.sentence-3>`_,
-  Clang should not diagnose incomplete types in function definitions if the function body is "= delete;".
+  Clang should not diagnose incomplete types in function definitions if the function body is ``= delete;``.
   This fixes Issue `Issue 52802 <https://github.com/llvm/llvm-project/issues/52802>`_.
 - Unknown type attributes with a ``[[]]`` spelling are no longer diagnosed twice.
   This fixes Issue `Issue 54817 <https://github.com/llvm/llvm-project/issues/54817>`_.
@@ -163,7 +172,7 @@ Bug Fixes
   promise_type body for coroutines if there is any allocation function
   declaration in the scope of promise_type. Additionally, to implement CWG2585,
   a coroutine will no longer generate a call to a global allocation function
-  with the signature (std::size_t, p0, ..., pn).
+  with the signature ``(std::size_t, p0, ..., pn)``.
   This fixes Issue `Issue 54881 <https://github.com/llvm/llvm-project/issues/54881>`_.
 - Implement `CWG 2394 <https://wg21.link/cwg2394>`_: Const class members
   may be initialized with a defaulted default constructor under the same
@@ -198,6 +207,30 @@ Bug Fixes
   constant folded. Fixes `Issue 55638 <https://github.com/llvm/llvm-project/issues/55638>`_.
 - Fixed incompatibility of Clang's ``<stdatomic.h>`` with MSVC ``<atomic>``.
   Fixes `MSVC STL Issue 2862 <https://github.com/microsoft/STL/issues/2862>`_.
+- Empty enums and enums with a single enumerator with value zero will be
+  considered to have one positive bit in order to represent the underlying
+  value. This effects whether we consider the store of the value one to be well
+  defined.
+- An operator introduced to the scope via a ``using`` statement now correctly references this
+  statement in clangd (hover over the symbol, jump to definition) as well as in the AST dump.
+  This also fixes `issue 55095 <https://github.com/llvm/llvm-project/issues/#55095>`_ as a
+  side-effect.
+- When including a PCH from a GCC style directory with multiple alternative PCH
+  files, Clang now requires all defines set on the command line while generating
+  the PCH and when including it to match. This matches GCC's behaviour.
+  Previously Clang would tolerate defines to be set when creating the PCH but
+  missing when used, or vice versa. This makes sure that Clang picks the
+  correct one, where it previously would consider multiple ones as potentially
+  acceptable (and erroneously use whichever one is tried first).
+- Fix a crash when generating code coverage information for an
+  ``if consteval`` statement. This fixes
+  `Issue 57377 <https://github.com/llvm/llvm-project/issues/57377>`_.
+- Fix a crash when a ``btf_type_tag`` attribute is applied to the pointee of
+  a function pointer.
+- Clang 14 predeclared some builtin POSIX library functions in ``gnu2x`` mode,
+  and Clang 15 accidentally stopped predeclaring those functions in that
+  language mode. Clang 16 now predeclares those functions again. This fixes
+  `Issue 56607 <https://github.com/llvm/llvm-project/issues/56607>`_.
 
 Improvements to Clang's diagnostics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -234,18 +267,6 @@ Improvements to Clang's diagnostics
   without a prototype and with no arguments is an invalid redeclaration of a
   function with a prototype. e.g., ``void f(int); void f() {}`` is now properly
   diagnosed.
-- The ``-Wimplicit-function-declaration`` warning diagnostic now defaults to
-  an error in C99 and later. Prior to C2x, it may be downgraded to a warning
-  with ``-Wno-error=implicit-function-declaration``, or disabled entirely with
-  ``-Wno-implicit-function-declaration``. As of C2x, support for implicit
-  function declarations has been removed, and the warning options will have no
-  effect.
-- The ``-Wimplicit-int`` warning diagnostic now defaults to an error in C99 and
-  later. Prior to C2x, it may be downgraded to a warning with
-  ``-Wno-error=implicit-int``, or disabled entirely with ``-Wno-implicit-int``.
-  As of C2x, support for implicit int has been removed, and the warning options
-  will have no effect. Specifying ``-Wimplicit-int`` in C89 mode will now issue
-  warnings instead of being a noop.
 - No longer issue a "declaration specifiers missing, defaulting to int"
   diagnostic in C89 mode because it is not an extension in C89, it was valid
   code. The diagnostic has been removed entirely as it did not have a
@@ -290,7 +311,7 @@ Improvements to Clang's diagnostics
 - When using class templates without arguments, clang now tells developers
   that template arguments are missing in certain contexts.
   This fixes `Issue 55962 <https://github.com/llvm/llvm-project/issues/55962>`_.
-- Printable Unicode characters within `static_assert` messages are no longer
+- Printable Unicode characters within ``static_assert`` messages are no longer
   escaped.
 - The ``-Winfinite-recursion`` diagnostic no longer warns about
   unevaluated operands of a ``typeid`` expression, as they are now
@@ -305,15 +326,20 @@ Improvements to Clang's diagnostics
   conversions now defaults to an error in all C language modes. It may be
   downgraded to a warning with ``-Wno-error=int-conversion``, or disabled
   entirely with ``-Wno-int-conversion``.
+- Deprecated lax vector conversions for Altivec vectors.
+  The default behaviour with respect to these conversions
+  will switch to disable them in an upcoming release.
+- On AIX, only emit XL compatibility warning when 16 byte aligned structs are
+  pass-by-value function arguments.
 
 
 Non-comprehensive list of changes in this release
 -------------------------------------------------
 
-- Improve __builtin_dump_struct:
+- Improve ``__builtin_dump_struct``:
 
   - Support bitfields in struct and union.
-  - Improve the dump format, dump both bitwidth(if its a bitfield) and field
+  - Improve the dump format, dump both bitwidth (if its a bitfield) and field
     value.
   - Remove anonymous tag locations and flatten anonymous struct members.
   - Beautify dump format, add indent for struct members.
@@ -326,8 +352,9 @@ Non-comprehensive list of changes in this release
     custom formatting for non-aggregate types.
 
 - Previously disabled sanitizer options now enabled by default:
-  - ASAN_OPTIONS=detect_stack_use_after_return=1 (only on Linux).
-  - MSAN_OPTIONS=poison_in_dtor=1.
+
+  - ``ASAN_OPTIONS=detect_stack_use_after_return=1`` (only on Linux).
+  - ``MSAN_OPTIONS=poison_in_dtor=1``.
 
 - Some type-trait builtins, such as ``__has_trivial_assign``, have been documented
   as deprecated for a while because their semantics don't mix well with post-C++11 type-traits.
@@ -431,6 +458,11 @@ Attribute Changes in Clang
   ``__attribute__((function_return("keep")))`` was added. This is intended to
   be used by the Linux kernel to mitigate RETBLEED.
 
+- Ignore the ``__preferred_name__`` attribute when writing for C++20 module interfaces.
+  This is a short-term workaround intentionally since clang doesn't take care of the
+  serialization and deserialization of ``__preferred_name__``.  See
+  https://github.com/llvm/llvm-project/issues/56490 for example.
+
 Windows Support
 ---------------
 
@@ -490,6 +522,9 @@ C++ Language Changes in Clang
   unsigned character literals. This fixes `Issue 54886 <https://github.com/llvm/llvm-project/issues/54886>`_.
 - Stopped allowing constraints on non-template functions to be compliant with
   dcl.decl.general p4.
+- Improved `copy elision` optimization. It's possible to apply `NRVO` for an object if at the moment when
+  any return statement of this object is executed, the `return slot` won't be occupied by another object.
+
 
 C++20 Feature Support
 ^^^^^^^^^^^^^^^^^^^^^
@@ -509,9 +544,23 @@ C++20 Feature Support
   that can be used for such compatibility. The demangler now demangles
   symbols with named module attachment.
 
+- Enhanced the support for C++20 Modules, including: Partitions,
+  Reachability, Header Unit and ``extern "C++"`` semantics.
+
+- Implemented `P1103R3: Merging Modules <https://wg21.link/P1103R3>`_.
+- Implemented `P1779R3: ABI isolation for member functions <https://wg21.link/P1779R3>`_.
+- Implemented `P1874R1: Dynamic Initialization Order of Non-Local Variables in Modules <https://wg21.link/P1874R1>`_.
+- Partially implemented `P1815R2: Translation-unit-local entities <https://wg21.link/P1815R2>`_.
+
 - As per "Conditionally Trivial Special Member Functions" (P0848), it is
   now possible to overload destructors using concepts. Note that the rest
   of the paper about other special member functions is not yet implemented.
+- Skip rebuilding lambda expressions in arguments of immediate invocations.
+  This fixes `GH56183 <https://github.com/llvm/llvm-project/issues/56183>`_,
+  `GH51695 <https://github.com/llvm/llvm-project/issues/51695>`_,
+  `GH50455 <https://github.com/llvm/llvm-project/issues/50455>`_,
+  `GH54872 <https://github.com/llvm/llvm-project/issues/54872>`_,
+  `GH54587 <https://github.com/llvm/llvm-project/issues/54587>`_.
 
 C++2b Feature Support
 ^^^^^^^^^^^^^^^^^^^^^
@@ -529,25 +578,28 @@ C++2b Feature Support
 CUDA/HIP Language Changes in Clang
 ----------------------------------
 
-- Added `__noinline__` as a keyword to avoid diagnostics due to usage of
-  `__attribute__((__noinline__))` in CUDA/HIP programs.
+- Added ``__noinline__`` as a keyword to avoid diagnostics due to usage of
+  ``__attribute__((__noinline__))`` in CUDA/HIP programs.
 
 Objective-C Language Changes in Clang
 -------------------------------------
 
-OpenCL C Language Changes in Clang
-----------------------------------
+OpenCL Kernel Language Changes in Clang
+---------------------------------------
 
-...
+- Improved/fixed misc issues in the builtin function support and diagnostics.
+- Improved diagnostics for unknown extension pragma, subgroup functions and
+  implicit function prototype.
+- Added ``-cl-ext`` flag to the Clang driver to toggle extensions/features
+  compiled for.
+- Added ``cl_khr_subgroup_rotate`` extension.
+- Removed some ``printf`` and ``hostcall`` related diagnostics when compiling
+  for AMDGPU.
+- Fixed alignment of pointer types in kernel arguments.
 
 ABI Changes in Clang
 --------------------
 
-- GCC doesn't pack non-POD members in packed structs unless the packed
-  attribute is also specified on the member. Clang historically did perform
-  such packing. Clang now matches the gcc behavior (except on Darwin and PS4).
-  You can switch back to the old ABI behavior with the flag:
-  ``-fclang-abi-compat=14.0``.
 - When compiling C for ARM or AArch64, a zero-length bitfield in a ``struct``
   (e.g. ``int : 0``) no longer prevents the structure from being considered a
   homogeneous floating-point or vector aggregate. The new behavior agrees with
@@ -568,6 +620,8 @@ ABI Changes in Clang
 
 OpenMP Support in Clang
 -----------------------
+* Added the support for ``atomic compare`` and ``atomic compare capture``
+  (``-fopenmp-version=51`` is required).
 
 ...
 
@@ -593,6 +647,19 @@ X86 Support in Clang
   will be used by Linux kernel mitigations for RETBLEED. The corresponding flag
   ``-mfunction-return=keep`` may be appended to disable the feature.
 
+The ``_Float16`` type requires SSE2 feature and above due to the instruction
+limitations. When using it on i386 targets, you need to specify ``-msse2``
+explicitly.
+
+For targets without F16C feature or above, please make sure:
+
+- Use GCC 12.0 and above if you are using libgcc.
+- If you are using compiler-rt, use the same version with the compiler.
+  Early versions provided FP16 builtins in a different ABI. A workaround is to use
+  a small code snippet to check the ABI if you cannot make sure of it.
+- If you are using downstream runtimes that provide FP16 conversions, update
+  them with the new ABI.
+
 DWARF Support in Clang
 ----------------------
 
@@ -607,8 +674,34 @@ Arm and AArch64 Support in Clang
 --------------------------------
 
 - clang now supports the Cortex-M85 CPU, which can be chosen with
-  `-mcpu=cortex-m85`. By default, this has PACBTI turned on, but it can be
-  disabled with `-mcpu=cortex-m85+nopacbti`.
+  ``-mcpu=cortex-m85``. By default, this has PACBTI turned on, but it can be
+  disabled with ``-mcpu=cortex-m85+nopacbti``.
+- clang now supports using C/C++ operators on sizeless SVE vectors such as
+  ``svint32_t``. The set of supported operators is shown in the table Vector
+  Operations found in the :ref:`Clang Language Extensions <Vector Operations>`
+  document.
+
+RISC-V Support in Clang
+-----------------------
+
+- Updates to the RISC-V vector intrinsics to align with ongoing additions to
+  the RISC-V Vector intrinsics specification. Additionally, these intrinsics
+  are now generated lazily, resulting a substantial improvement in
+  compile-time for code including the vector intrinsics header.
+- Intrinsics added for the RISC-V scalar crypto ('K') extensions.
+- Intrinsics added for the RISC-V CLZ and CTZ instructions in the Zbb
+  extension.
+- An ABI lowering bug (resulting in incorrect LLVM IR generation) was fixed.
+  The bug could be triggered in particular circumstances in C++ when passing a
+  data-only struct that inherits from another struct.
+
+SPIR-V Support in Clang
+-----------------------
+
+- Added flag ``-fintegrated-objemitter`` to enable use of experimental
+  integrated LLVM backend when generating SPIR-V binary.
+- The SPIR-V generator continues to produce typed pointers in this release
+  despite the general switch of LLVM to opaque pointers.
 
 Floating Point Support in Clang
 -------------------------------
@@ -666,7 +759,11 @@ clang-extdef-mapping
 libclang
 --------
 
-- ...
+- Introduce new option ``CLANG_FORCE_MATCHING_LIBCLANG_SOVERSION`` that defaults to ON.
+  This means that by default libclang's SOVERSION matches the major version of LLVM.
+  Setting this to OFF makes the SOVERSION be the ABI compatible version (currently 13).
+  See `discussion <https://discourse.llvm.org/t/rationale-for-removing-versioned-libclang-middle-ground-to-keep-it-behind-option/64410>`_
+  here.
 
 Static Analyzer
 ---------------
@@ -679,8 +776,8 @@ Static Analyzer
   positives.
 
 - Added a new checker ``alpha.unix.cstring.UninitializedRead`` this will check for uninitialized reads
-  from common memory copy/manipulation functions such as ``memcpy``, ``mempcpy``, ``memmove``, ``memcmp``, `
-  `strcmp``, ``strncmp``, ``strcpy``, ``strlen``, ``strsep`` and many more. Although
+  from common memory copy/manipulation functions such as ``memcpy``, ``mempcpy``, ``memmove``, ``memcmp``,
+  ``strcmp``, ``strncmp``, ``strcpy``, ``strlen``, ``strsep`` and many more. Although
   this checker currently is in list of alpha checkers due to a false positive.
 
 - Added a new checker ``alpha.unix.Errno``. This can find the first read
@@ -729,5 +826,5 @@ this release by going into the "``clang/docs/``" directory in the Clang
 tree.
 
 If you have any questions or comments about Clang, please feel free to
-contact us on the Discourse forums (Clang Frontend category)
+contact us on the `Discourse forums (Clang Frontend category)
 <https://discourse.llvm.org/c/clang/6>`_.

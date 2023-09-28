@@ -8149,9 +8149,15 @@ VPRecipeBase *VPRecipeBuilder::tryToOptimizeInductionPHI(
                                        *PSE.getSE(), *OrigLoop, Range);
 
   // Check if this is pointer induction. If so, build the recipe for it.
-  if (auto *II = Legal->getPointerInductionDescriptor(Phi))
-    return new VPWidenPointerInductionRecipe(Phi, Operands[0], *II,
-                                             *PSE.getSE());
+  if (auto *II = Legal->getPointerInductionDescriptor(Phi)) {
+    return new VPWidenPointerInductionRecipe(
+        Phi, Operands[0], *II, *PSE.getSE(),
+        LoopVectorizationPlanner::getDecisionAndClampRange(
+            [&](ElementCount VF) {
+              return CM.isScalarAfterVectorization(Phi, VF);
+            },
+            Range));
+  }
   return nullptr;
 }
 
@@ -10109,8 +10115,19 @@ bool LoopVectorizePass::processLoop(Loop *L) {
     if (Hints.getForce() == LoopVectorizeHints::FK_Enabled)
       LLVM_DEBUG(dbgs() << " But vectorizing was explicitly forced.\n");
     else {
-      LLVM_DEBUG(dbgs() << "\n");
-      SEL = CM_ScalarEpilogueNotAllowedLowTripLoop;
+      if (*ExpectedTC > TTI->getMinTripCountTailFoldingThreshold()) {
+        LLVM_DEBUG(dbgs() << "\n");
+        SEL = CM_ScalarEpilogueNotAllowedLowTripLoop;
+      } else {
+        LLVM_DEBUG(dbgs() << " But the target considers the trip count too "
+                             "small to consider vectorizing.\n");
+        reportVectorizationFailure(
+            "The trip count is below the minial threshold value.",
+            "loop trip count is too low, avoiding vectorization",
+            "LowTripCount", ORE, L);
+        Hints.emitRemarkWithHints();
+        return false;
+      }
     }
   }
 

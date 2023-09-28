@@ -29,6 +29,7 @@
 #include "clang/Sema/DeclSpec.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/Overload.h"
+#include "clang/Sema/RISCVIntrinsicManager.h"
 #include "clang/Sema/Scope.h"
 #include "clang/Sema/ScopeInfo.h"
 #include "clang/Sema/Sema.h"
@@ -928,13 +929,19 @@ bool Sema::LookupBuiltin(LookupResult &R) {
         }
       }
 
+      if (DeclareRISCVVBuiltins) {
+        if (!RVIntrinsicManager)
+          RVIntrinsicManager = CreateRISCVIntrinsicManager(*this);
+
+        if (RVIntrinsicManager->CreateIntrinsicIfFound(R, II, PP))
+          return true;
+      }
+
       // If this is a builtin on this (or all) targets, create the decl.
       if (unsigned BuiltinID = II->getBuiltinID()) {
-        // In C++, C2x, and OpenCL (spec v1.2 s6.9.f), we don't have any
-        // predefined library functions like 'malloc'. Instead, we'll just
-        // error.
-        if ((getLangOpts().CPlusPlus || getLangOpts().OpenCL ||
-             getLangOpts().C2x) &&
+        // In C++ and OpenCL (spec v1.2 s6.9.f), we don't have any predefined
+        // library functions like 'malloc'. Instead, we'll just error.
+        if ((getLangOpts().CPlusPlus || getLangOpts().OpenCL) &&
             Context.BuiltinInfo.isPredefinedLibFunction(BuiltinID))
           return false;
 

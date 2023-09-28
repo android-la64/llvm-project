@@ -3593,10 +3593,19 @@ static bool cannotBeOrderedLessThanZeroImpl(const Value *V,
   // Unsigned integers are always nonnegative.
   case Instruction::UIToFP:
     return true;
-  case Instruction::FMul:
   case Instruction::FDiv:
-    // X * X is always non-negative or a NaN.
     // X / X is always exactly 1.0 or a NaN.
+    if (I->getOperand(0) == I->getOperand(1) &&
+        (!SignBitOnly || cast<FPMathOperator>(I)->hasNoNaNs()))
+      return true;
+
+    // Set SignBitOnly for RHS, because X / -0.0 is -Inf (or NaN).
+    return cannotBeOrderedLessThanZeroImpl(I->getOperand(0), TLI, SignBitOnly,
+                                           Depth + 1) &&
+           cannotBeOrderedLessThanZeroImpl(I->getOperand(1), TLI,
+                                           /*SignBitOnly*/ true, Depth + 1);
+  case Instruction::FMul:
+    // X * X is always non-negative or a NaN.
     if (I->getOperand(0) == I->getOperand(1) &&
         (!SignBitOnly || cast<FPMathOperator>(I)->hasNoNaNs()))
       return true;
@@ -4266,9 +4275,10 @@ bool llvm::getConstantDataArrayInfo(const Value *V,
   return true;
 }
 
-/// This function computes the length of a null-terminated C string pointed to
-/// by V. If successful, it returns true and returns the string in Str.
-/// If unsuccessful, it returns false.
+/// Extract bytes from the initializer of the constant array V, which need
+/// not be a nul-terminated string.  On success, store the bytes in Str and
+/// return true.  When TrimAtNul is set, Str will contain only the bytes up
+/// to but not including the first nul.  Return false on failure.
 bool llvm::getConstantStringInfo(const Value *V, StringRef &Str,
                                  uint64_t Offset, bool TrimAtNul) {
   ConstantDataArraySlice Slice;

@@ -1386,6 +1386,8 @@ enum {
   // These all contain stack unwind tables.
   PT_ARM_EXIDX = 0x70000001,
   PT_ARM_UNWIND = 0x70000001,
+  // MTE memory tag segment type
+  PT_AARCH64_MEMTAG_MTE = 0x70000002,
 
   // MIPS program header types.
   PT_MIPS_REGINFO = 0x70000000,  // Register usage information.
@@ -1595,6 +1597,7 @@ enum {
   NT_GNU_BUILD_ID = 3,
   NT_GNU_GOLD_VERSION = 4,
   NT_GNU_PROPERTY_TYPE_0 = 5,
+  FDO_PACKAGING_METADATA = 0xcafe1a7e,
 };
 
 // Android note types.

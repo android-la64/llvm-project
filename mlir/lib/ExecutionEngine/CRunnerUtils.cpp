@@ -128,7 +128,9 @@ extern "C" void *_mlir_aligned_alloc(uint64_t alignment, uint64_t size) {
 #ifdef _WIN32
   return _aligned_malloc(size, alignment);
 #else
-  return aligned_alloc(alignment, size);
+  void *result = nullptr;
+  (void)::posix_memalign(&result, alignment, size);
+  return result;
 #endif
 }
 

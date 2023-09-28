@@ -1406,18 +1406,28 @@ static void translateSetCCForBranch(const SDLoc &DL, SDValue &LHS, SDValue &RHS,
     }
   }
 
-  // Convert X > -1 to X >= 0.
-  if (CC == ISD::SETGT && isAllOnesConstant(RHS)) {
-    RHS = DAG.getConstant(0, DL, RHS.getValueType());
-    CC = ISD::SETGE;
-    return;
-  }
-  // Convert X < 1 to 0 >= X.
-  if (CC == ISD::SETLT && isOneConstant(RHS)) {
-    RHS = LHS;
-    LHS = DAG.getConstant(0, DL, RHS.getValueType());
-    CC = ISD::SETGE;
-    return;
+  if (auto *RHSC = dyn_cast<ConstantSDNode>(RHS)) {
+    int64_t C = RHSC->getSExtValue();
+    switch (CC) {
+    default: break;
+    case ISD::SETGT:
+      // Convert X > -1 to X >= 0.
+      if (C == -1) {
+        RHS = DAG.getConstant(0, DL, RHS.getValueType());
+        CC = ISD::SETGE;
+        return;
+      }
+      break;
+    case ISD::SETLT:
+      // Convert X < 1 to 0 <= X.
+      if (C == 1) {
+        RHS = LHS;
+        LHS = DAG.getConstant(0, DL, RHS.getValueType());
+        CC = ISD::SETGE;
+        return;
+      }
+      break;
+    }
   }
 
   switch (CC) {
@@ -8189,7 +8199,13 @@ static SDValue performSETCCCombine(SDNode *N, SelectionDAG &DAG,
   if (!isIntEqualitySetCC(Cond))
     return SDValue();
 
-  const APInt &C1 = cast<ConstantSDNode>(N1)->getAPIntValue();
+  // Don't do this if the sign bit is provably zero, it will be turned back into
+  // an AND.
+  APInt SignMask = APInt::getOneBitSet(64, 31);
+  if (DAG.MaskedValueIsZero(N0.getOperand(0), SignMask))
+    return SDValue();
+
+  const APInt &C1 = N1C->getAPIntValue();
 
   SDLoc dl(N);
   // If the constant is larger than 2^32 - 1 it is impossible for both sides
