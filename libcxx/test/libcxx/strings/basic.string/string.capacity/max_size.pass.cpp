@@ -82,6 +82,8 @@ bool test() {
 #   endif
 # elif defined(__sparc64__)
   half_size();
+# elif defined(__loongarch__)
+  full_size();
 # elif defined(_WIN32)
   full_size();
 # else
