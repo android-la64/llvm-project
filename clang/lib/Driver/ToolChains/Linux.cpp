@@ -89,6 +89,8 @@ std::string Linux::getMultiarchTriple(const Driver &D,
   case llvm::Triple::loongarch32:
     return "loongarch32-linux-gnu";
   case llvm::Triple::loongarch64:
+    if (IsAndroid)
+      return "loongarch64-linux-android";
     return "loongarch64-linux-gnu";
 
   case llvm::Triple::m68k:
