@@ -20,12 +20,12 @@
 ## The .got.plt slots relocated by .rela.plt point to .plt
 ## This is required by glibc.
 # RELOC64:      .rela.plt {
-# RELOC64-NEXT:   0x120030410 R_LARCH_JUMP_SLOT bar 0x0
-# RELOC64-NEXT:   0x120030418 R_LARCH_JUMP_SLOT weak 0x0
+# RELOC64-NEXT:   0x120030420 R_LARCH_JUMP_SLOT bar 0x0
+# RELOC64-NEXT:   0x120030428 R_LARCH_JUMP_SLOT weak 0x0
 # RELOC64-NEXT: }
 # GOTPLT64:      section '.got.plt'
-# GOTPLT64-NEXT: 0x120030400 00000000 00000000 00000000 00000000
-# GOTPLT64-NEXT: 0x120030410 f0020120 01000000 f0020120 01000000
+# GOTPLT64-NEXT: 0x120030410 00000000 00000000 00000000 00000000
+# GOTPLT64-NEXT: 0x120030420 f0020120 01000000 f0020120 01000000
 
 # DIS:      <_start>:
 ## foo - . = 0x1200102e0-0x1200102d0 = 16
@@ -43,29 +43,29 @@
 ## 1200102f0 .plt
 # DIS:      Disassembly of section .plt:
 # DIS:      <.plt>:
-## hi20(.got.plt - .plt + 0x800) = (0x120030400 - 0x1200102f0 + 0x800)>>12 = 0x20910 >> 12 = 0x20
+## hi20(.got.plt - .plt + 0x800) = (0x120030410 - 0x1200102f0 + 0x800)>>12 = 0x20920 >> 12 = 0x20
 # DIS-NEXT:              pcaddu12i $r14, 32
 # DIS-NEXT:              sub.d     $r13, $r13, $r15
-## lo12(.got.plt - .plt) = (0x120030400 - 0x1200102f0) & 0xfff = 0x20110 & 0xfff = 0x110
-# DIS64-NEXT:            ld.d      $r15, $r14, 272
+## lo12(.got.plt - .plt) = (0x120030410 - 0x1200102f0) & 0xfff = 0x20120 & 0xfff = 0x120
+# DIS64-NEXT:            ld.d      $r15, $r14, 288
 # DIS64-NEXT:            addi.d    $r13, $r13, -40
-## lo12(.got.plt - .plt) = (0x120030400 - 0x1200102f0) & 0xfff = 0x20110 & 0xfff = 0x110
-# DIS64-NEXT:            addi.d    $r12, $r14, 272
+## lo12(.got.plt - .plt) = (0x120030410 - 0x1200102f0) & 0xfff = 0x20120 & 0xfff = 0x120
+# DIS64-NEXT:            addi.d    $r12, $r14, 288
 # DIS64-NEXT:            srli.d    $r13, $r13, 1
 # DIS64-NEXT:            ld.d      $r12, $r12, 8
 # DIS-NEXT:              jirl      $zero, $r15, 0
 
-## hi20(&.got.plt[bar]-.) = (0x120030410 - 0x120010310 + 0x800) >> 12 = 0x20900 >> 12 = 0x20
+## hi20(&.got.plt[bar]-.) = (0x120030420 - 0x120010310 + 0x800) >> 12 = 0x20910 >> 12 = 0x20
 # DIS:        120010310: pcaddu12i $r15, 32
-## lo12(&.got.plt[bar]-.) = (0x120030410 - 0x120010310) & 0xfff = 0x20100 & 0xfff = 0x100
-# DIS64-NEXT:            ld.d      $r15, $r15, 256
+## lo12(&.got.plt[bar]-.) = (0x120030420 - 0x120010310) & 0xfff = 0x20110 & 0xfff = 0x110
+# DIS64-NEXT:            ld.d      $r15, $r15, 272
 # DIS-NEXT:              pcaddu12i $r13, 0
 # DIS-NEXT:              jirl      $zero, $r15, 0
 
-## hi20(&.got.plt[weak]-.) = (0x120030418 - 0x120010320 + 0x800) >> 12 = 0x208f8 >> 12 = 0x20
+## hi20(&.got.plt[weak]-.) = (0x120030428 - 0x120010320 + 0x800) >> 12 = 0x20908 >> 12 = 0x20
 # DIS:        120010320: pcaddu12i $r15, 32
-## lo12(&.got.plt[weak]-.) = (0x120030418 - 0x120010320) & 0xfff = 0x200f8 & 0xfff = 0xf8
-# DIS64-NEXT:            ld.d      $r15, $r15, 248
+## lo12(&.got.plt[weak]-.) = (0x120030428 - 0x120010320) & 0xfff = 0x20108 & 0xfff = 0x108
+# DIS64-NEXT:            ld.d      $r15, $r15, 264
 # DIS-NEXT:              pcaddu12i $r13, 0
 # DIS-NEXT:              jirl      $zero, $r15, 0
 

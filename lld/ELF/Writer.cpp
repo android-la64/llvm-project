@@ -174,9 +174,9 @@ static Defined *addOptionalRegular(StringRef name, SectionBase *sec,
   return cast<Defined>(s);
 }
 
-static Defined *addAbsolute(StringRef name) {
+static Defined *addAbsolute(StringRef name, SectionBase *section = nullptr) {
   Symbol *sym = symtab->addSymbol(Defined{nullptr, name, STB_GLOBAL, STV_HIDDEN,
-                                          STT_NOTYPE, 0, 0, nullptr});
+                                          STT_NOTYPE, 0, 0, section});
   sym->isUsedInRegularObj = true;
   return cast<Defined>(sym);
 }
@@ -236,6 +236,16 @@ void elf::addReservedSymbols() {
     s->resolve(Defined{/*file=*/nullptr, StringRef(), STB_GLOBAL, STV_HIDDEN,
                        STT_NOTYPE, gotOff, /*size=*/0, Out::elfHeader});
     ElfSym::globalOffsetTable = cast<Defined>(s);
+  } else if (config->emachine == EM_LOONGARCH) {
+    // _GLOBAL_OFFSET_TABLE_ is generated in LoongArch llvm backend when
+    // accessing global variable. It is fine for normal compiliation and
+    // linking, but it does not work for the LTO scenario because lld has an
+    // ordering problem of when the linker defined symbol
+    // `_GLOBAL_OFFSET_TABLE_` is created and when the output ELF file from LTO
+    // is loaded. See https://github.com/llvm/llvm-project/issues/38982.
+    // So definie this symbol when it is not found in symtab.
+    addAbsolute(gotSymName, Out::elfHeader);
+    ElfSym::globalOffsetTable = cast<Defined>(symtab->find(gotSymName));
   }
 
   // __ehdr_start is the location of ELF file headers. Note that we define
