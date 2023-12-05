@@ -239,6 +239,7 @@ public:
     MCAsmParserExtension::Initialize(parser);
 
     parser.addAliasForDirective(".asciiz", ".asciz");
+    parser.addAliasForDirective(".half", ".2byte");
     parser.addAliasForDirective(".hword", ".2byte");
     parser.addAliasForDirective(".word", ".4byte");
     parser.addAliasForDirective(".dword", ".8byte");
