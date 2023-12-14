@@ -578,6 +578,11 @@ union __sanitizer_pthread_attr_t {
 #if SANITIZER_ANDROID
 # if SANITIZER_MIPS
 typedef unsigned long __sanitizer_sigset_t[16 / sizeof(unsigned long)];
+# elif SANITIZER_LOONGARCH64
+struct __sanitizer_sigset_t {
+  // The size is determined by looking at sizeof of real sigset_t on linux.
+  uptr val[128 / (sizeof(uptr) * 8)];
+};
 # else
 typedef unsigned long __sanitizer_sigset_t;
 # endif
