@@ -517,7 +517,7 @@ static constexpr uptr kExtraRegs[] = {0};
 #    define ARCH_IOVEC_FOR_GETREGSET
 
 #    if SANITIZER_LOONGARCH
-#      define REG_SP regs[3]
+#      define REG_SP gpr[3]
 #    endif
 
 #  elif defined(__aarch64__)
