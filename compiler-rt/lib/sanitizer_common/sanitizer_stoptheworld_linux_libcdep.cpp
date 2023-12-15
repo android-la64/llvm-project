@@ -516,7 +516,9 @@ typedef struct user_regs_struct regs_struct;
 static constexpr uptr kExtraRegs[] = {0};
 #    define ARCH_IOVEC_FOR_GETREGSET
 
-#    if SANITIZER_LOONGARCH
+#    if SANITIZER_ANDROID
+#      define REG_SP regs[3]
+#    elif SANITIZER_LOONGARCH
 #      define REG_SP gpr[3]
 #    endif
 
