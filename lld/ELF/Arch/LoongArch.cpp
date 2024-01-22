@@ -80,10 +80,12 @@ template <class ELFT> LoongArch<ELFT>::LoongArch() {
   defaultMaxPageSize = 65536;
   gotEntrySize = sizeof(typename ELFT::uint);
   pltEntrySize = 16;
+  ipltEntrySize = 16;
   pltHeaderSize = 32;
   copyRel = R_LARCH_COPY;
   pltRel = R_LARCH_JUMP_SLOT;
   relativeRel = R_LARCH_RELATIVE;
+  iRelativeRel = R_LARCH_IRELATIVE;
   // _GLOBAL_OFFSET_TABLE_ is relative to .got
   gotBaseSymInGotPlt = false;
 
