@@ -1,0 +1,56 @@
+cc_library_static {
+    name: "libLLVM15X86CodeGen",
+    defaults: [
+        "llvm15-lib-defaults",
+        "llvm15-x86-defaults",
+    ],
+    srcs: ["*.cpp"],
+
+    // b/llvm/31559947, b/llvm/31938382 clang-tidy segmentation fault.
+    tidy_checks: [
+        "-clang-analyzer-*",
+        "-readability-*",
+        "-google-readability-*",
+    ],
+}
+
+cc_defaults {
+    name: "llvm15-x86-defaults",
+    generated_headers: ["llvm15-gen-x86"],
+    static_libs: ["llvm15-x86-headers"],
+}
+
+cc_library_static {
+    name: "llvm15-x86-headers",
+    vendor_available: true,
+    host_supported: true,
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
+    export_include_dirs: ["."],
+}
+
+llvm15_tblgen {
+    name: "llvm15-gen-x86",
+    in: "X86.td",
+    outs: [
+        "X86GenAsmMatcher.inc",
+        "X86GenAsmWriter.inc",
+        "X86GenAsmWriter1.inc",
+        "X86GenDisassemblerTables.inc",
+        "X86GenRegisterInfo.inc",
+        "X86GenInstrInfo.inc",
+        "X86GenDAGISel.inc",
+        "X86GenFastISel.inc",
+        "X86GenSubtargetInfo.inc",
+        "X86GenCallingConv.inc",
+        "X86GenRegisterBank.inc",
+        "X86GenEVEX2VEXTables.inc",
+        "X86GenGlobalISel.inc",
+        "X86GenMnemonicTables.inc",
+    ],
+}
+
+subdirs = ["*"]

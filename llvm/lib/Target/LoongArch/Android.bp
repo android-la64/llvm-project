@@ -1,0 +1,48 @@
+cc_library_static {
+    name: "libLLVM15LoongArchCodeGen",
+    defaults: [
+        "llvm15-lib-defaults",
+        "llvm15-loongarch-defaults",
+    ],
+    srcs: [
+        "*.cpp",
+        "GISel/*.cpp",
+    ],
+}
+
+cc_defaults {
+    name: "llvm15-loongarch-defaults",
+    generated_headers: ["llvm15-gen-loongarch"],
+    static_libs: ["llvm15-loongarch-headers"],
+}
+
+cc_library_static {
+    name: "llvm15-loongarch-headers",
+    vendor_available: true,
+    host_supported: true,
+    target: {
+        windows: {
+            enabled: false,
+        },
+    },
+    export_include_dirs: ["."],
+}
+
+llvm15_tblgen {
+    name: "llvm15-gen-loongarch",
+    in: "LoongArch.td",
+    outs: [
+        "LoongArchGenRegisterInfo.inc",
+        "LoongArchGenInstrInfo.inc",
+        "LoongArchGenAsmWriter.inc",
+        "LoongArchGenDAGISel.inc",
+        "LoongArchGenCallingConv.inc",
+        "LoongArchGenAsmMatcher.inc",
+        "LoongArchGenSubtargetInfo.inc",
+        "LoongArchGenMCCodeEmitter.inc",
+        "LoongArchGenDisassemblerTables.inc",
+        "LoongArchGenMCPseudoLowering.inc",
+    ],
+}
+
+subdirs = ["*"]

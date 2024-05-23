@@ -1,0 +1,13 @@
+cc_defaults {
+    name: "llvm15-lib-defaults",
+    vendor_available: true,
+    defaults: ["llvm15-defaults"],
+    export_header_lib_headers: ["llvm15-headers"],
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
+}
+
+subdirs = ["*"]

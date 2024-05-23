@@ -1,0 +1,19 @@
+cc_library_static {
+    name: "libLLVM15Support",
+    vendor_available: true,
+    defaults: ["llvm15-defaults-no-generated-headers"],
+    target: {
+        // llvm15-defaults turns off host builds by default, turn it back on for
+        // modules that are used to build llvm15-tblgen
+        host: {
+            enabled: true,
+        },
+        windows: {
+            enabled: true,
+        },
+    },
+    srcs: [
+        "*.c",
+        "*.cpp",
+    ],
+}

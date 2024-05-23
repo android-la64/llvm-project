@@ -1,0 +1,56 @@
+cc_library_static {
+    name: "libLLVM15ARMCodeGen",
+    defaults: [
+        "llvm15-lib-defaults",
+        "llvm15-arm-defaults",
+    ],
+    srcs: ["*.cpp"],
+
+    // b/llvm/31559947, b/llvm/31938382 clang-tidy segmentation fault.
+    tidy_checks: [
+        "-clang-analyzer-*",
+        "-readability-*",
+    ],
+}
+
+cc_defaults {
+    name: "llvm15-arm-defaults",
+    generated_headers: ["llvm15-gen-arm"],
+    static_libs: ["llvm15-arm-headers"],
+}
+
+cc_library_static {
+    name: "llvm15-arm-headers",
+    vendor_available: true,
+    host_supported: true,
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
+    export_include_dirs: ["."],
+}
+
+llvm15_tblgen {
+    name: "llvm15-gen-arm",
+    in: "ARM.td",
+    outs: [
+        "ARMGenRegisterInfo.inc",
+        "ARMGenInstrInfo.inc",
+        "ARMGenCodeEmitter.inc",
+        "ARMGenMCCodeEmitter.inc",
+        "ARMGenMCPseudoLowering.inc",
+        "ARMGenAsmWriter.inc",
+        "ARMGenAsmMatcher.inc",
+        "ARMGenDAGISel.inc",
+        "ARMGenFastISel.inc",
+        "ARMGenCallingConv.inc",
+        "ARMGenSubtargetInfo.inc",
+        "ARMGenDisassemblerTables.inc",
+        "ARMGenRegisterBank.inc",
+        "ARMGenGlobalISel.inc",
+        "ARMGenSystemRegister.inc",
+    ],
+}
+
+subdirs = ["*"]

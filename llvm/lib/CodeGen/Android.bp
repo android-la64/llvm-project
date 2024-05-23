@@ -1,0 +1,12 @@
+cc_library_static {
+    name: "libLLVM15CodeGen",
+    defaults: [
+        "llvm15-lib-defaults",
+    ],
+    srcs: [
+        "*.cpp",
+        "LiveDebugValues/*.cpp",
+    ],
+}
+
+subdirs = ["*"]

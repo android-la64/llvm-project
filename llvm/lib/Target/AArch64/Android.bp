@@ -1,0 +1,57 @@
+cc_library_static {
+    name: "libLLVM15AArch64CodeGen",
+    defaults: [
+        "llvm15-lib-defaults",
+        "llvm15-aarch64-defaults",
+    ],
+    srcs: [
+        "*.cpp",
+        "GISel/*.cpp",
+    ],
+}
+
+cc_defaults {
+    name: "llvm15-aarch64-defaults",
+    generated_headers: ["llvm15-gen-aarch64"],
+    static_libs: ["llvm15-aarch64-headers"],
+}
+
+cc_library_static {
+    name: "llvm15-aarch64-headers",
+    vendor_available: true,
+    host_supported: true,
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
+    export_include_dirs: ["."],
+}
+
+llvm15_tblgen {
+    name: "llvm15-gen-aarch64",
+    in: "AArch64.td",
+    outs: [
+        "AArch64GenRegisterInfo.inc",
+        "AArch64GenInstrInfo.inc",
+        "AArch64GenAsmWriter.inc",
+        "AArch64GenAsmWriter1.inc",
+        "AArch64GenDAGISel.inc",
+        "AArch64GenCallingConv.inc",
+        "AArch64GenAsmMatcher.inc",
+        "AArch64GenSubtargetInfo.inc",
+        "AArch64GenMCCodeEmitter.inc",
+        "AArch64GenFastISel.inc",
+        "AArch64GenDisassemblerTables.inc",
+        "AArch64GenMCPseudoLowering.inc",
+        "AArch64GenSystemOperands.inc",
+        "AArch64GenRegisterBank.inc",
+        "AArch64GenGlobalISel.inc",
+        "AArch64GenO0PreLegalizeGICombiner.inc",
+        "AArch64GenPreLegalizeGICombiner.inc",
+        "AArch64GenPostLegalizeGICombiner.inc",
+        "AArch64GenPostLegalizeGILowering.inc",
+    ],
+}
+
+subdirs = ["*"]

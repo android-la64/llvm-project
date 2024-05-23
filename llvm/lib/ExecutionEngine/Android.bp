@@ -1,0 +1,9 @@
+cc_library_static {
+    name: "libLLVM15ExecutionEngine",
+    defaults: [
+        "llvm15-lib-defaults",
+    ],
+    srcs: ["*.cpp"],
+}
+
+subdirs = ["*"]
