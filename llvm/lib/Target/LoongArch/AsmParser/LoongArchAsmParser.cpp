@@ -568,6 +568,7 @@ static bool matchRegisterNameHelper(MCRegister &RegNo, StringRef Name) {
   return RegNo == LoongArch::NoRegister;
 }
 
+#if 0
 bool LoongArchAsmParser::parseRegister(MCRegister &Reg, SMLoc &StartLoc,
                                        SMLoc &EndLoc) {
   return Error(getLoc(), "invalid register number");
@@ -578,6 +579,28 @@ ParseStatus LoongArchAsmParser::tryParseRegister(MCRegister &Reg,
                                                  SMLoc &EndLoc) {
   llvm_unreachable("Unimplemented function.");
 }
+#else
+bool LoongArchAsmParser::parseRegister(MCRegister &Reg, SMLoc &StartLoc,
+                                  SMLoc &EndLoc) {
+  return tryParseRegister(Reg, StartLoc, EndLoc).isSuccess();
+}
+
+ParseStatus LoongArchAsmParser::tryParseRegister(MCRegister &Reg,
+                                                          SMLoc &StartLoc,
+                                                          SMLoc &EndLoc) {
+  const AsmToken &Tok = getParser().getTok();
+  StartLoc = Tok.getLoc();
+  EndLoc = Tok.getEndLoc();
+  StringRef Name = getLexer().getTok().getIdentifier();
+
+  int ret = matchRegisterNameHelper(Reg, Name);
+  if (!ret)
+    return ParseStatus::NoMatch;
+
+  getParser().Lex(); // Eat identifier token.
+  return ParseStatus::Success;
+}
+#endif
 
 bool LoongArchAsmParser::classifySymbolRef(const MCExpr *Expr,
                                            LoongArchMCExpr::VariantKind &Kind) {
