@@ -273,6 +273,10 @@ LoongArchTargetLowering::LoongArchTargetLowering(const TargetMachine &TM,
       setCondCodeAction(
           {ISD::SETNE, ISD::SETGE, ISD::SETGT, ISD::SETUGE, ISD::SETUGT}, VT,
           Expand);
+      setOperationAction(ISD::FCEIL, {MVT::f32, MVT::f64}, Legal);
+      setOperationAction(ISD::FFLOOR, {MVT::f32, MVT::f64}, Legal);
+      setOperationAction(ISD::FTRUNC, {MVT::f32, MVT::f64}, Legal);
+      setOperationAction(ISD::FROUNDEVEN, {MVT::f32, MVT::f64}, Legal);
     }
     for (MVT VT : {MVT::v4i32, MVT::v2i64}) {
       setOperationAction({ISD::SINT_TO_FP, ISD::UINT_TO_FP}, VT, Legal);
