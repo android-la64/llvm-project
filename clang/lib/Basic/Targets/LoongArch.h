@@ -37,6 +37,7 @@ public:
     HasFeatureF = false;
     HasFeatureLSX = false;
     HasFeatureLASX = false;
+    HasFloat16 = true;
     LongDoubleWidth = 128;
     LongDoubleAlign = 128;
     LongDoubleFormat = &llvm::APFloat::IEEEquad();
